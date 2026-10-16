@@ -1,0 +1,11 @@
+slug: "rps-chess"
+display_name: "RPS Chess 9x9"
+description_md: |
+  Two players battle on a 9x9 grid using Rock, Paper, Scissors pieces.
+  Reach the opponent's home base (P1 -> i9, P2 -> a1) or wipe out all pieces
+  of any single opponent piece type to achieve victory.
+bot_interface: "python_function"
+timeout_ms: 1000
+time_bank_ms: 0
+memory_limit_mb: 256
+max_turns: 200
