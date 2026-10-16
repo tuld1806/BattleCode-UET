@@ -11,6 +11,17 @@ def test_cannot_instantiate_abstract_game_engine():
     assert "Can't instantiate abstract class GameEngine" in str(excinfo.value)
 
 
+def test_abstract_methods_enforced_on_incomplete_subclass():
+    """Verify that incomplete subclasses missing any abstract methods cannot be instantiated."""
+    class IncompleteEngine(GameEngine):
+        def get_initial_state(self, p1: int, p2: int) -> dict:
+            return {}
+
+    with pytest.raises(TypeError) as excinfo:
+        IncompleteEngine()
+    assert "Can't instantiate abstract class IncompleteEngine" in str(excinfo.value)
+
+
 def test_concrete_subclass_implements_interface():
     """Verify that a properly implemented subclass can be instantiated and called."""
     class DummyEngine(GameEngine):
