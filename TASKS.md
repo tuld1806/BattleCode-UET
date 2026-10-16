@@ -153,3 +153,72 @@
   - Plan: [`docs/superpowers/plans/2026-10-10-rating-history-visualizer.md`](docs/superpowers/plans/2026-10-10-rating-history-visualizer.md)
 
 
+---
+
+## Milestone 11: Multi-Game Tournament Platform Redesign (Triển Khai Song Song 3 Track)
+
+> **Trạng thái**: Đang triển khai.
+> **Phân công chi tiết**: [`docs/TEAM_WORKSTREAMS.md`](docs/TEAM_WORKSTREAMS.md)
+> **Spec kiến trúc**: [`docs/superpowers/specs/2026-10-16-multi-game-platform-design.md`](docs/superpowers/specs/2026-10-16-multi-game-platform-design.md)
+
+### Track A: Engine & Plugin System (Phụ trách: Member A)
+
+- [ ] **Task A1**: Tạo `engine/base.py` — Abstract `GameEngine` interface chuẩn hóa cho mọi game plugin.
+  - *Verification*: Import và khởi tạo được từ file khác, các method abstract raise `NotImplementedError`.
+- [ ] **Task A2**: Tạo `games/rps_chess/engine.py` — Bọc `engine/game.py` hiện tại vào `GameEngine` interface. Tạo `config.yaml` và copy 5 boss bots vào `games/rps_chess/bosses/`.
+  - *Verification*: `GameEngine` instance chạy được 1 ván RPS Chess hoàn chỉnh.
+- [ ] **Task A3**: Cập nhật `server/models.py` — Thêm `Game`, `GameProfile`, `Tournament`, `TournamentEnrollment`; thêm `game_id`/`tournament_id` vào `Match`; thêm `game_id` vào `Bot`; xóa `elo/wins/losses/draws` khỏi `User`.
+  - *Verification*: `scripts/migrate_multi_game.py` chạy idempotent thành công, `app.db` có đủ bảng mới.
+- [ ] **Task A4**: Refactor `engine/runner.py` — Nhận `GameEngine` instance thay vì hard-code RPS Chess logic.
+  - *Verification*: `pytest tests/test_runner.py` PASS sau khi cập nhật test signatures.
+- [ ] **Task A5**: Tạo `engine/plugin_loader.py` — Validate zip, AST scan toàn bộ `.py`, unpack, importlib load.
+  - *Verification*: `pytest tests/test_plugin_loader.py` PASS (ít nhất 5 cases: valid, malicious import, missing engine class, bad config, duplicate slug).
+- [ ] **Task A6**: Cập nhật `tests/test_database.py`, `tests/test_runner.py`, `tests/test_queue.py` cho schema mới.
+  - *Verification*: `pytest tests/test_database.py tests/test_runner.py tests/test_queue.py` xanh 100%.
+
+### Track B: Backend Server & Tournament System (Phụ trách: Member B)
+
+- [ ] **Task B1**: Tạo `server/game_registry.py` — Singleton registry load và cache `GameEngine` qua importlib.
+  - *Verification*: `pytest tests/test_game_registry.py` PASS.
+- [ ] **Task B2**: Tạo `server/routes/admin_games.py` — API upload plugin zip, list game, toggle `is_active`.
+  - *Verification*: `pytest tests/test_admin_game_routes.py` PASS (valid upload, malicious upload rejected, toggle).
+- [ ] **Task B3**: Tạo `server/routes/admin_tournaments.py` — CRUD tournament, status transition, start bracket.
+  - *Verification*: Admin có thể tạo tournament, chuyển trạng thái `open → running → bracket → finished`.
+- [ ] **Task B4**: Tạo `server/routes/games.py` — Player-facing API: list games, game detail, tournament enroll/un-enroll.
+  - *Verification*: `pytest tests/test_tournament_enrollment.py` PASS (ít nhất 5 cases).
+- [ ] **Task B5**: Cập nhật `server/tournament.py` — Tất cả Elo đọc/ghi từ `GameProfile.elo`, không còn `User.elo`.
+  - *Verification*: `pytest tests/test_tournament.py` PASS sau khi cập nhật.
+- [ ] **Task B6**: Cập nhật `server/rating_history.py`, `server/queue.py`, `server/boss_manager.py`, `server/routes/leaderboard.py` — Thêm `game_id` scope + backward compat 301 redirect cho `/api/leaderboard`.
+  - *Verification*: `GET /api/leaderboard` trả về 301 redirect tới `/api/games/rps-chess/leaderboard`.
+
+### Track C: Frontend & Templates (Phụ trách: Member C)
+
+- [ ] **Task C1**: Tạo `web/templates/lobby.html` — Trang chủ mới: grid game cards, fetch `GET /api/games`.
+  - *Verification*: Truy cập `/` hiện danh sách game dưới dạng card.
+- [ ] **Task C2**: Tạo `web/templates/game_detail.html` — 3 tabs: luật chơi, leaderboard (per-game Elo), danh sách tournament + nút Enroll.
+  - *Verification*: Trang `/games/rps-chess` load đầy đủ 3 tabs.
+- [ ] **Task C3**: Tạo `web/templates/tournament_detail.html` — Enrolled list, FFA countdown, bracket view.
+  - *Verification*: Trang `/games/rps-chess/tournaments/1` hiển thị đúng trạng thái tournament.
+- [ ] **Task C4**: Tạo `web/templates/admin/` subdirectory với 6 file: `dashboard.html`, `games.html`, `game_upload.html`, `tournaments.html`, `tournament_detail.html`, `users.html`.
+  - *Verification*: Tất cả route `/admin/*` trả về 200 khi đăng nhập admin, 403 khi không phải admin.
+- [ ] **Task C5**: Cập nhật `web/templates/profile.html` — Hiện GameProfile card theo từng game thay vì 1 Elo duy nhất. Tạo `web/templates/game_profile.html`.
+  - *Verification*: Profile người chơi hiện đúng Elo per-game.
+- [ ] **Task C6**: Cập nhật `web/templates/base.html` và `web/static/js/rating_chart.js`.
+  - *Verification*: Navbar link về Lobby, chart nhận `game_slug` param hoạt động đúng.
+- [ ] **Task C7**: Cập nhật `tests/test_web.py` — Thêm route test cho tất cả trang mới.
+  - *Verification*: `pytest tests/test_web.py` PASS.
+
+### Integration (Cả Nhóm — Ngày cuối)
+
+- [ ] **Task 11.1**: Merge theo thứ tự: Track A → Track B → Track C → `main`.
+  - *Verification*: `pytest -v` xanh 100% trên `main` sau mỗi merge.
+- [ ] **Task 11.2**: Manual smoke test toàn bộ luồng: Lobby → Game Detail → Tournament Enroll → FFA match → Elo cập nhật trong GameProfile → Xem replay.
+  - *Verification*: Tất cả bước thực hiện được không có lỗi.
+- [ ] **Task 11.3**: Đồng bộ `docs/CONTEXT_RESUME.md` — Cập nhật kiến trúc multi-game, schema mới, routes mới.
+  - *Verification*: `pytest tests/test_documentation_integrity.py` PASS.
+- [ ] **Task 11.4**: Cập nhật `README.md` — Cấu trúc thư mục mới, hướng dẫn upload game plugin.
+
+- *Liên kết chi tiết Spec và Plan*:
+  - Spec: [`docs/superpowers/specs/2026-10-16-multi-game-platform-design.md`](docs/superpowers/specs/2026-10-16-multi-game-platform-design.md)
+  - Team workstreams: [`docs/TEAM_WORKSTREAMS.md`](docs/TEAM_WORKSTREAMS.md)
+
