@@ -107,7 +107,7 @@
             </td>
             <td style="text-align: right;">
               {% if not bot.is_active %}
-                <button class="btn btn-sm" onclick="activateBot({{ bot.id }})">Kích hoạt</button>
+                <button class="btn btn-sm" data-bot-id="{{ bot.id }}" onclick="activateBot(this.dataset.botId)">Kích hoạt</button>
               {% else %}
                 <span style="color: var(--muted); font-size: 12px;">Đang dùng</span>
               {% endif %}
@@ -131,7 +131,7 @@
   <div class="chart-header">
     <h2 class="chart-title">Biến động Elo cá nhân</h2>
   </div>
-  <div id="user-rating-chart-container"></div>
+  <div id="user-rating-chart-container" data-url="/api/users/{{ current_user.id }}/rating-history?limit=50"></div>
 </div>
 
 <!-- Recent Matches History -->
@@ -198,10 +198,14 @@
 {% block scripts %}
 <script src="/static/js/rating_chart.js"></script>
 <script>
-  {% if current_user and not current_user.is_admin %}
   document.addEventListener('DOMContentLoaded', async function () {
+    const chartContainer = document.getElementById('user-rating-chart-container');
+    if (!chartContainer) return;
+    const url = chartContainer.getAttribute('data-url');
+    if (!url) return;
+
     try {
-      const res = await fetch('/api/users/{{ current_user.id }}/rating-history?limit=50');
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         RatingChart.render('user-rating-chart-container', data);
@@ -210,7 +214,6 @@
       console.error('Failed to load user rating history:', err);
     }
   });
-  {% endif %}
 
   let selectedFile = null;
 
