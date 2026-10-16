@@ -285,3 +285,88 @@ def test_sqlite_pragmas_wal(tmp_path):
         assert str(journal_mode).lower() in ("wal", "memory")
         foreign_keys = conn.exec_driver_sql("PRAGMA foreign_keys;").scalar()
         assert foreign_keys == 1
+
+
+def test_new_multi_game_models_creation(tmp_path):
+    """Verify creation and relationships of Game, GameProfile, Tournament, and TournamentEnrollment."""
+    from server.database import init_db, get_db
+    from server.models import Game, GameProfile, Tournament, TournamentEnrollment, User, Bot, Match
+
+    init_db()
+    db = next(get_db())
+    try:
+        # Create game
+        game = Game(
+            slug="rps-chess",
+            display_name="RPS Chess 9x9",
+            description_md="Classic RPS Chess rules",
+            plugin_path="games/rps_chess",
+            config_json='{"max_turns": 200}',
+            is_active=True,
+        )
+        db.add(game)
+        db.commit()
+        db.refresh(game)
+        assert game.id is not None
+        assert game.slug == "rps-chess"
+
+        # Create user & profile
+        user = User(username="multi_bob", password_hash="hash")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        profile = GameProfile(user_id=user.id, game_id=game.id, elo=1250, wins=1, losses=0, draws=0)
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+        assert profile.id is not None
+        assert profile.elo == 1250
+
+        # Create tournament & enrollment
+        tournament = Tournament(
+            game_id=game.id,
+            name="Fall Cup",
+            status="open",
+            ffa_start_time="19:00",
+            ffa_end_time="21:00",
+            ffa_day_count=7,
+            bracket_top_n=8,
+            elo_multiplier=1.5,
+            enrollment_open=True,
+        )
+        db.add(tournament)
+        db.commit()
+        db.refresh(tournament)
+        assert tournament.id is not None
+
+        bot = Bot(user_id=user.id, game_id=game.id, filename="bot.py", filepath="bots/bot.py")
+        db.add(bot)
+        db.commit()
+        db.refresh(bot)
+
+        enrollment = TournamentEnrollment(
+            tournament_id=tournament.id,
+            user_id=user.id,
+            bot_id=bot.id,
+        )
+        db.add(enrollment)
+        db.commit()
+        db.refresh(enrollment)
+        assert enrollment.id is not None
+
+        # Verify match has game_id and tournament_id
+        match = Match(
+            game_id=game.id,
+            tournament_id=tournament.id,
+            player1_id=user.id,
+            player2_id=user.id,
+        )
+        db.add(match)
+        db.commit()
+        db.refresh(match)
+        assert match.game_id == game.id
+        assert match.tournament_id == tournament.id
+    finally:
+        db.close()
+
