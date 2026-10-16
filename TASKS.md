@@ -163,18 +163,21 @@
 
 ### Track A: Engine & Plugin System (Phụ trách: Member A)
 
-- [ ] **Task A1**: Tạo `engine/base.py` — Abstract `GameEngine` interface chuẩn hóa cho mọi game plugin.
-  - *Verification*: Import và khởi tạo được từ file khác, các method abstract raise `NotImplementedError`.
-- [ ] **Task A2**: Tạo `games/rps_chess/engine.py` — Bọc `engine/game.py` hiện tại vào `GameEngine` interface. Tạo `config.yaml` và copy 5 boss bots vào `games/rps_chess/bosses/`.
-  - *Verification*: `GameEngine` instance chạy được 1 ván RPS Chess hoàn chỉnh.
-- [ ] **Task A3**: Cập nhật `server/models.py` — Thêm `Game`, `GameProfile`, `Tournament`, `TournamentEnrollment`; thêm `game_id`/`tournament_id` vào `Match`; thêm `game_id` vào `Bot`; xóa `elo/wins/losses/draws` khỏi `User`.
-  - *Verification*: `scripts/migrate_multi_game.py` chạy idempotent thành công, `app.db` có đủ bảng mới.
-- [ ] **Task A4**: Refactor `engine/runner.py` — Nhận `GameEngine` instance thay vì hard-code RPS Chess logic.
-  - *Verification*: `pytest tests/test_runner.py` PASS sau khi cập nhật test signatures.
-- [ ] **Task A5**: Tạo `engine/plugin_loader.py` — Validate zip, AST scan toàn bộ `.py`, unpack, importlib load.
-  - *Verification*: `pytest tests/test_plugin_loader.py` PASS (ít nhất 5 cases: valid, malicious import, missing engine class, bad config, duplicate slug).
-- [ ] **Task A6**: Cập nhật `tests/test_database.py`, `tests/test_runner.py`, `tests/test_queue.py` cho schema mới.
-  - *Verification*: `pytest tests/test_database.py tests/test_runner.py tests/test_queue.py` xanh 100%.
+- [x] **Task A1**: Tạo `engine/base.py` — Abstract `GameEngine` interface chuẩn hóa cho mọi game plugin.
+  - *Verification*: `pytest tests/test_engine_base.py` -> 3/3 PASS.
+- [x] **Task A2**: Tạo `games/rps_chess/engine.py` — Bọc `engine/game.py` hiện tại vào `GameEngine` interface. Tạo `config.yaml` và copy 5 boss bots vào `games/rps_chess/bosses/`.
+  - *Verification*: `pytest tests/test_rps_chess_plugin.py` -> 1/1 PASS.
+- [x] **Task A3**: Cập nhật `server/models.py` — Thêm `Game`, `GameProfile`, `Tournament`, `TournamentEnrollment`; thêm `game_id`/`tournament_id` vào `Match`; thêm `game_id` vào `Bot`; chuyển `elo/wins/losses/draws` sang `GameProfile`.
+  - *Verification*: `pytest tests/test_database.py` -> 12/12 PASS.
+- [x] **Task A4**: Tạo `scripts/migrate_multi_game.py` — Migration script idempotent backfill `game_id=1`, `GameProfile` và `Tournament`.
+  - *Verification*: `pytest tests/test_migration_multi_game.py` -> 1/1 PASS.
+- [x] **Task A5**: Refactor `engine/runner.py` — Nhận `GameEngine` instance thay vì hard-code RPS Chess logic.
+  - *Verification*: `pytest tests/test_runner.py` -> 13/13 PASS.
+- [x] **Task A6**: Tạo `engine/plugin_loader.py` — Validate zip, phòng thủ ZipSlip, AST scan toàn bộ `.py`, unpack, importlib load.
+  - *Verification*: `pytest tests/test_plugin_loader.py` -> 5/5 PASS.
+- [x] **Task A7**: Cập nhật `tests/test_database.py`, `tests/test_runner.py`, `tests/test_queue.py` cho schema mới.
+  - *Verification*: `pytest tests/test_database.py tests/test_runner.py tests/test_queue.py` -> 33/33 PASS (Full suite 328/328 PASS).
+
 
 ### Track B: Backend Server & Tournament System (Phụ trách: Member B)
 

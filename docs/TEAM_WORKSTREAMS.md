@@ -46,15 +46,16 @@
 | `tests/test_plugin_loader.py` | NEW | Test zip validation + AST scan + load |
 
 **Checklist**:
-- [ ] A1: `engine/base.py` với `GameEngine` abstract class
-- [ ] A2: `games/rps_chess/engine.py` + `config.yaml` + copy bosses
-- [ ] A3: `server/models.py` — 4 bảng mới + sửa `Match`/`Bot` + bỏ `User.elo`
-- [ ] A4: `scripts/migrate_multi_game.py` chạy idempotent thành công
-- [ ] A5: `engine/runner.py` refactor nhận `GameEngine`
-- [ ] A6: `engine/plugin_loader.py` — validate zip, AST scan, importlib load
-- [ ] A7: Cập nhật `tests/test_database.py`, `test_runner.py`, `test_queue.py`
-- [ ] A8: `tests/test_plugin_loader.py` — ít nhất 5 test cases
-- [ ] A9: `pytest tests/` xanh 100% trên worktree này
+- [x] A1: `engine/base.py` với `GameEngine` abstract class (Hoàn thành - Sync Point 0 ready)
+- [x] A2: `games/rps_chess/engine.py` + `config.yaml` + copy bosses (Hoàn thành)
+- [x] A3: `server/models.py` — 4 bảng mới + sửa `Match`/`Bot` + bỏ `User.elo` (Hoàn thành - Sync Point 0 ready)
+- [x] A4: `scripts/migrate_multi_game.py` chạy idempotent thành công (Hoàn thành)
+- [x] A5: `engine/runner.py` refactor nhận `GameEngine` (Hoàn thành)
+- [x] A6: `engine/plugin_loader.py` — validate zip, AST scan, importlib load (Hoàn thành)
+- [x] A7: Cập nhật `tests/test_database.py`, `test_runner.py`, `test_queue.py` (Hoàn thành)
+- [x] A8: `tests/test_plugin_loader.py` — ít nhất 5 test cases (Hoàn thành)
+- [x] A9: `pytest tests/` xanh 100% trên worktree này (328/328 tests passed)
+
 
 ---
 

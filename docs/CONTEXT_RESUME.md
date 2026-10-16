@@ -326,4 +326,53 @@ Nhằm nâng cao động lực thi đấu và tinh thần cạnh tranh trong gi�
    - Bảng chú giải (legend) tương tác: click hoặc hover vào huy hiệu đội để làm nổi bật đường quỹ đạo tương ứng và làm mờ các đường còn lại.
    - Màn hình thông báo nhắc nhở thân thiện: Khi chưa có đủ 2 trận đấu, hiển thị thông báo hướng dẫn người chơi tham gia thi đấu thêm để biểu đồ xuất hiện.
    - Tương thích hoàn toàn với hệ thống CSS Design Tokens (Slate/Charcoal) của nền tảng.
+---
 
+## 17. Kiến Trúc Đa Trò Chơi & Hệ Thống Plugin (Multi-Game Tournament Platform Architecture)
+
+Từ Milestone 11, nền tảng Battlecode mở rộng từ việc phục vụ duy nhất bộ cờ RPS Chess 9x9 sang kiến trúc đa trò chơi (Multi-Game Tournament Platform) có khả năng cắm rút động thông qua plugin:
+
+1. **Giao Diện Trừu Tượng Engine Trò Chơi (engine/base.py - GameEngine)**:
+   - Lớp cơ sở trừu tượng (bc.ABC) chuẩn hóa toàn bộ vòng đời và quy tắc của mọi trò chơi trên nền tảng.
+   - 7 phương thức cốt lõi bắt buộc:
+     - create_initial_state(board_size: int, **kwargs) -> Any: Khởi tạo và trả về trạng thái ván đấu ban đầu.
+     - get_valid_moves(state: Any, player: int) -> list[tuple[int, int, str]]: Trả về danh sách các nước đi hợp lệ cho người chơi được chỉ định.
+     - pply_move(state: Any, move: tuple[int, int, str], player: int) -> Any: Thực thi nước đi và trả về trạng thái ván đấu mới.
+     - check_game_over(state: Any) -> tuple[bool, int | None]: Đánh giá trạng thái kết thúc ván đấu ((is_over, winner_id) với winner_id bằng 0 khi hòa).
+     - get_player_view(state: Any, player: int) -> Any: Cung cấp góc nhìn quan sát hợp lệ (fog-of-war hoặc thông tin đối xứng) cho đấu thủ.
+     - get_render_spec() -> dict: Cung cấp thông số cấu hình hiển thị UI (kích thước bàn cờ, biểu tượng quân cờ, danh sách quy tắc).
+     - alidate_move(state: Any, move: tuple[int, int, str], player: int) -> bool: Kiểm tra tính hợp lệ của một nước đi trước khi áp dụng.
+   - Các cấu trúc dữ liệu đính kèm: Move (namedtuple lưu trữ (x, y, piece_type)), GameResult (dataclass chuẩn hóa kết quả thi đấu).
+
+2. **Mô Hình Dữ Liệu Đa Trò Chơi (server/models.py)**:
+   - Bảng games: Quản lý danh mục trò chơi (id, slug, 
+ame, description, min_players, max_players, default_board_size, 	ime_limit_seconds, is_active, plugin_path, config_json, created_at).
+   - Bảng game_profiles: Lưu trữ chỉ số Elo và thành tích của người chơi theo từng trò chơi riêng biệt (user_id, game_id, elo, wins, losses, draws, peak_elo, updated_at).
+   - Mở rộng các thực thể: Bot gắn với game_id, Match gắn với game_id, Tournament và TournamentEnrollment hỗ trợ giải đấu theo từng bộ môn trò chơi riêng biệt.
+   - Tính tương thích ngược (Backward Compatibility): Bảng users giữ lại các trường fallback (elo, wins, losses, draws) bên cạnh quan hệ game_profiles nhằm bảo đảm an toàn cho các module chưa hoàn tất chuyển đổi của Track B.
+
+3. **Plugin RPS Chess 9x9 Đóng Gói Hoàn Chỉnh (games/rps_chess/)**:
+   - games/rps_chess/engine.py (RPSChessEngine): Kế thừa GameEngine, đóng gói toàn bộ logic từ engine/game.py (GameState) mà không sửa đổi file gốc.
+   - games/rps_chess/config.yaml: Manifest khai báo metadata, kích thước bàn cờ chuẩn 9x9, giới hạn thời gian (1.0s), tối đa 200 lượt đi, và hệ thống quy tắc Kéo-Búa-Bao.
+   - Đóng gói 5 Boss Bot chuẩn vào thư mục games/rps_chess/bosses/: 
+andom_bot.py, 
+ock_only_bot.py, ggressive_bot.py, defensive_bot.py, 	actical_bot.py.
+
+4. **Trình Thực Thi Trận Đấu Phân Tách (engine/runner.py)**:
+   - Hàm 
+un_match(bot1_path, bot2_path, board_size=9, time_limit=1.0, max_turns=200, engine=None):
+     - Cho phép truyền vào tham số engine: GameEngine | None = None. Khi không truyền, mặc định khởi tạo RPSChessEngine bảo đảm tương thích ngược 100%.
+     - Vòng lặp thi đấu và kiểm tra điều kiện kết thúc ván đấu dựa hoàn toàn vào các phương thức chuẩn hóa của GameEngine.
+     - Hàm _format_match_result(engine, state, turns, winner, p1_name, p2_name, moves_history): Định dạng kết quả thi đấu độc lập với loại trò chơi.
+
+5. **Hệ Thống Tải Plugin Động & Sandbox Bảo Mật AST (engine/plugin_loader.py)**:
+   - load_plugin(plugin_dir: Path | str) -> GameEngine: Đọc file cấu hình config.yaml, quét bảo mật mã nguồn engine, và nạp động class engine bằng importlib.util.
+   - unpack_and_validate_plugin(zip_path: Path | str, target_dir: Path | str) -> Path: Giải nén an toàn chống lỗ hổng Zip Slip bằng cách xác thực đường dẫn tuyệt đối của mọi file thành phần phải nằm trong thư mục đích.
+   - scan_plugin_ast(file_path: Path | str) -> list[str]: Quét AST thông qua lớp kế thừa PluginSecurityVisitor (cho phép import an toàn engine.base và bc, đồng thời ngăn chặn nghiêm ngặt các thư viện nguy hiểm như os, sys, subprocess, socket, shutil).
+
+6. **Kịch Bản Di Trú Dữ Liệu Idempotent (scripts/migrate_multi_game.py)**:
+   - Tự động nhận diện cấu trúc cơ sở dữ liệu SQLite qua PRAGMA table_info.
+   - Tạo lập an toàn các bảng mới games và game_profiles nếu chưa tồn tại.
+   - Di chuyển dữ liệu Elo và thành tích lịch sử của tất cả người dùng hiện có vào bảng game_profiles cho trò chơi mặc định 
+ps_chess_9x9 (game_id=1).
+   - Vận hành an toàn và bảo đảm tính bất biến (idempotent) khi chạy lặp lại nhiều lần.
