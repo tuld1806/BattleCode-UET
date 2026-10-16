@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard & FFA Arena - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Bảng xếp hạng & Đấu trường FFA (Leaderboard)</h1>
+    <div class="page-subtitle">Xếp hạng thuật toán 9x9 Rock-Paper-Scissors Chess theo Elo</div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    {% if is_portal_open %}
+      <div class="portal-badge open">
+        <span class="dot"></span>
+        <span>Cổng FFA: Mở</span>
+      </div>
+    {% else %}
+      <div class="portal-badge closed">
+        <span class="dot"></span>
+        <span>Cổng FFA: Đóng</span>
+      </div>
+    {% endif %}
+
+    <div class="multiplier-tag">
+      <span>⚡ Hệ số ngày: x{{ daily_multiplier_x }}</span>
+    </div>
+  </div>
+</div>
+
+<div id="rating-chart-card" class="chart-card" style="margin-bottom: 24px;">
+  <div class="chart-header">
+    <h2 class="chart-title">Biến động xếp hạng Elo (Top 5)</h2>
+  </div>
+  <div id="rating-chart-container"></div>
+</div>
+
+<div class="table-wrap">
+  <table class="table-dark">
+    <thead>
+      <tr>
+        <th style="width: 70px; text-align: center;">Hạng</th>
+        <th>Người chơi</th>
+        <th>Elo Rating</th>
+        <th>Thắng / Thua / Hòa</th>
+        <th>Bot hoạt động</th>
+        <th style="text-align: right;">Hành động</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for player in leaderboard %}
+      <tr>
+        <td style="text-align: center;">
+          <span class="rank-pill {% if player.rank == 1 %}rank-1{% elif player.rank == 2 %}rank-2{% elif player.rank == 3 %}rank-3{% endif %}">
+            {{ player.rank }}
+          </span>
+        </td>
+        <td>
+          <strong style="color: var(--text);">{{ player.username }}</strong>
+          {% if current_user and current_user.id == player.id %}
+            <span class="tag blue" style="margin-left: 6px;">Bạn</span>
+          {% endif %}
+        </td>
+        <td>
+          <span class="elo-badge">{{ player.elo }}</span>
+        </td>
+        <td>
+          <span style="color: #34d399; font-weight: 700;">{{ player.wins }}W</span>
+          <span style="color: var(--muted);">/</span>
+          <span style="color: #f87171; font-weight: 700;">{{ player.losses }}L</span>
+          <span style="color: var(--muted);">/</span>
+          <span style="color: var(--muted);">{{ player.draws }}D</span>
+        </td>
+        <td>
+          {% if player.has_active_bot %}
+            <span style="color: #34d399; font-size: 13px; font-weight: 600;">● Sẵn sàng</span>
+          {% else %}
+            <span style="color: var(--muted); font-size: 13px;">○ Chưa nộp bot</span>
+          {% endif %}
+        </td>
+        <td style="text-align: right;">
+          {% if current_user and current_user.id == player.id %}
+            <a href="/profile" class="btn btn-sm">Quản lý Bot</a>
+          {% else %}
+            <button class="btn btn-primary btn-sm btn-challenge"
+                    onclick="challengePlayer({{ player.id }}, '{{ player.username }}')"
+                    {% if not is_portal_open or not player.has_active_bot %}disabled{% endif %}
+                    title="{% if not is_portal_open %}Cổng FFA đang đóng{% elif not player.has_active_bot %}Đối thủ chưa có bot hoạt động{% else %}Thách đấu đối thủ{% endif %}">
+              ⚔️ Thách đấu
+            </button>
+          {% endif %}
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--muted); padding: 32px;">
+          Chưa có người chơi nào trên bảng xếp hạng. Hãy đăng ký và tải lên bot đầu tiên!
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/rating_chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async function () {
+    try {
+      const res = await fetch('/api/leaderboard/rating-history?top=5&limit=30');
+      if (res.ok) {
+        const data = await res.json();
+        RatingChart.render('rating-chart-container', data);
+      }
+    } catch (err) {
+      console.error('Failed to load leaderboard rating history:', err);
+    }
+  });
+
+  async function challengePlayer(opponentId, username) {
+    if (!confirm(`Bạn có chắc muốn gửi thách đấu tới ${username}?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/matches/challenge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ opponent_id: opponentId })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.detail || 'Không thể tạo thách đấu.');
+        return;
+      }
+
+      alert(`Đã khởi tạo trận đấu #${data.match_id}! Đang chuyển hướng tới trang replay...`);
+      window.location.href = `/replay/${data.match_id}`;
+    } catch (err) {
+      alert(`Lỗi kết nối: ${err.message}`);
+    }
+  }
+</script>
+{% endblock %}

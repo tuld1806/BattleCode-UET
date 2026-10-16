@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ sơ & Quản lý Bot (Profile) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Hồ sơ người chơi & Quản lý Bot (Profile)</h1>
+    <div class="page-subtitle">Tải lên thuật toán Python (.py) và theo dõi lịch sử trận đấu</div>
+  </div>
+
+  {% if current_user %}
+  <div style="display: flex; gap: 12px; align-items: center;">
+    <div class="card" style="padding: 8px 16px; display: flex; gap: 16px;">
+      <div>Elo: <strong class="elo-badge">{{ current_user.elo }}</strong></div>
+      <div>Thắng: <strong style="color: #34d399;">{{ current_user.wins }}</strong></div>
+      <div>Thua: <strong style="color: #f87171;">{{ current_user.losses }}</strong></div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if not current_user %}
+<div class="card" style="text-align: center; padding: 48px 24px;">
+  <h2>Vui lòng đăng nhập để quản lý Bot</h2>
+  <p style="color: var(--muted); margin: 8px 0 24px;">Bạn cần đăng nhập tài khoản để tải lên file mã nguồn bot Python (.py) và tham gia thi đấu.</p>
+  <div>
+    <a href="/login" class="btn btn-primary">Đăng nhập</a>
+    <a href="/register" class="btn" style="margin-left: 8px;">Đăng ký tài khoản</a>
+  </div>
+</div>
+{% else %}
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Bot Upload Box -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Tải lên Bot mới (.py)</h2>
+    </div>
+
+    <form id="uploadBotForm" onsubmit="handleBotUpload(event)">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('botFileInput').click()">
+        <div class="drop-icon">📤</div>
+        <div class="drop-text">Kéo thả file bot .py vào đây hoặc nhấp để chọn</div>
+        <div class="drop-sub">File mã nguồn Python chứa hàm <code>get_move(board, my_player, history)</code></div>
+        <div id="selectedFileName" style="margin-top: 10px; font-weight: 700; color: var(--accent);"></div>
+      </div>
+
+      <input type="file" id="botFileInput" name="file" accept=".py" style="display: none;" onchange="handleFileSelect(event)">
+
+      <div id="uploadStatus" style="margin-top: 12px; font-size: 13px; display: none;"></div>
+
+      <div style="margin-top: 16px;">
+        <button type="submit" id="btnUploadSubmit" class="btn btn-primary" style="width: 100%;" disabled>
+          Tải lên và Kích hoạt Bot
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bot List Box -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Danh sách Bot đã nộp</h2>
+    </div>
+
+    <div style="max-height: 280px; overflow-y: auto;">
+      <table class="table-dark" style="font-size: 13px;">
+        <thead>
+          <tr>
+            <th>Tên file</th>
+            <th>Trạng thái</th>
+            <th style="text-align: right;">Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="botTableBody">
+          {% for bot in user_bots %}
+          <tr>
+            <td>
+              <strong>{{ bot.filename }}</strong>
+              <div style="color: var(--muted); font-size: 11px;">{{ bot.uploaded_at }}</div>
+            </td>
+            <td>
+              {% if bot.is_active %}
+                <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">
+                  ● Đang kích hoạt
+                </span>
+              {% else %}
+                <span style="color: var(--muted); font-size: 12px;">Không kích hoạt</span>
+              {% endif %}
+            </td>
+            <td style="text-align: right;">
+              {% if not bot.is_active %}
+                <button class="btn btn-sm" onclick="activateBot({{ bot.id }})">Kích hoạt</button>
+              {% else %}
+                <span style="color: var(--muted); font-size: 12px;">Đang dùng</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="3" style="text-align: center; color: var(--muted); padding: 20px;">
+              Chưa tải lên bot nào. Hãy nộp bot đầu tiên bằng form bên cạnh!
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- User Rating Trajectory Chart -->
+<div id="user-rating-chart-card" class="chart-card" style="margin-bottom: 24px;">
+  <div class="chart-header">
+    <h2 class="chart-title">Biến động Elo cá nhân</h2>
+  </div>
+  <div id="user-rating-chart-container"></div>
+</div>
+
+<!-- Recent Matches History -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Lịch sử trận đấu gần đây</h2>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table-dark">
+      <thead>
+        <tr>
+          <th style="width: 80px;">Trận</th>
+          <th>Người chơi 1 (Đỏ)</th>
+          <th>Người chơi 2 (Xanh)</th>
+          <th>Kết quả</th>
+          <th>Số lượt</th>
+          <th>Thời gian</th>
+          <th style="text-align: right;">Xem lại</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in user_matches %}
+        <tr>
+          <td>#{{ match.id }}</td>
+          <td>
+            <strong style="color: var(--p1);">{{ match.player1.username if match.player1 else 'P1' }}</strong>
+          </td>
+          <td>
+            <strong style="color: var(--p2);">{{ match.player2.username if match.player2 else 'P2' }}</strong>
+          </td>
+          <td>
+            {% if match.winner_id == current_user.id %}
+              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Thắng ({{ match.win_reason }})</span>
+            {% elif match.winner_id is none %}
+              <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
+            {% else %}
+              <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Thua ({{ match.win_reason }})</span>
+            {% endif %}
+          </td>
+          <td>{{ match.total_turns }} lượt</td>
+          <td style="color: var(--muted); font-size: 12px;">{{ match.created_at or '' }}</td>
+          <td style="text-align: right;">
+            <a href="/replay/{{ match.id }}" class="btn btn-sm btn-primary">
+              🎬 Replay
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+            Chưa có trận đấu nào được ghi nhận. Hãy thách đấu người chơi khác trên Bảng xếp hạng!
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/rating_chart.js"></script>
+<script>
+  {% if current_user %}
+  document.addEventListener('DOMContentLoaded', async function () {
+    try {
+      const res = await fetch('/api/users/{{ current_user.id }}/rating-history?limit=50');
+      if (res.ok) {
+        const data = await res.json();
+        RatingChart.render('user-rating-chart-container', data);
+      }
+    } catch (err) {
+      console.error('Failed to load user rating history:', err);
+    }
+  });
+  {% endif %}
+
+  let selectedFile = null;
+
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setFile(file);
+    }
+  }
+
+  function setFile(file) {
+    if (!file.name.endsWith('.py')) {
+      alert('Vui lòng chọn file mã nguồn Python (.py)');
+      return;
+    }
+    selectedFile = file;
+    document.getElementById('selectedFileName').textContent = `📄 Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    document.getElementById('btnUploadSubmit').disabled = false;
+  }
+
+  // Drag and drop event listeners
+  const dropZone = document.getElementById('dropZone');
+  if (dropZone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      dropZone.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+      }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      const dt = e.dataTransfer;
+      const file = dt.files[0];
+      if (file) {
+        setFile(file);
+      }
+    }, false);
+  }
+
+  async function handleBotUpload(e) {
+    e.preventDefault();
+    if (!selectedFile) return;
+
+    const statusEl = document.getElementById('uploadStatus');
+    const submitBtn = document.getElementById('btnUploadSubmit');
+
+    statusEl.style.display = 'block';
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Đang kiểm tra bảo mật AST sandbox và tải lên...';
+    submitBtn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const res = await fetch('/api/bots/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        statusEl.style.color = '#f87171';
+        statusEl.textContent = `Lỗi: ${data.detail || 'Tải lên bot thất bại'}`;
+        submitBtn.disabled = false;
+        return;
+      }
+
+      statusEl.style.color = '#34d399';
+      statusEl.textContent = `Tải lên thành công! Bot đã được kích hoạt. Đang tải lại...`;
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      statusEl.style.color = '#f87171';
+      statusEl.textContent = `Lỗi mạng: ${err.message}`;
+      submitBtn.disabled = false;
+    }
+  }
+
+  async function activateBot(botId) {
+    try {
+      const res = await fetch(`/api/bots/${botId}/activate`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        alert(data.detail || 'Không thể kích hoạt bot');
+      }
+    } catch (err) {
+      alert(`Lỗi: ${err.message}`);
+    }
+  }
+</script>
+{% endblock %}

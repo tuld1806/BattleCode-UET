@@ -1,0 +1,29 @@
+# Cấu hình giải đấu Battlecode RPS 9x9
+tournament:
+  title: "Giải Đấu Cờ Oẳn Tù Tì 9x9"
+  total_days: 7                  # Số ngày vòng bảng (n ngày)
+  current_day: 2                 # Ngày hiện tại của giải đấu
+  
+  # Khung giờ mở cổng thi đấu FFA hàng ngày
+  daily_schedule:
+    start_time: "19:00"          # Giờ mở cổng (24h format)
+    end_time: "21:00"            # Giờ đóng cổng
+    is_portal_open: false        # Trạng thái mở cổng hiện tại (admin có thể ghi đè trên Web)
+
+  # Cấu hình điểm số & Elo
+  elo:
+    initial_rating: 1200         # Điểm Elo khởi tạo cho mỗi người chơi
+    k_factor: 32                 # Hệ số K chuẩn
+    daily_multiplier_x: 2.0      # Hệ số x của ngày hôm nay (admin có thể random từ 1.0 - 3.0)
+
+  # Giới hạn trận đấu
+  match_rules:
+    max_turns: 200               # Tối đa 200 lượt đi, quá 200 turns tính theo số quân còn lại
+    turn_timeout_seconds: 1.0    # Tối đa 1 giây cho mỗi nước đi của bot
+
+  # Cấu hình giải đấu ngày cuối (Ngày n + 1)
+  final_bracket:
+    top_players_count: 8         # Số lượng người chơi lọt vào vòng chung kết (8 hoặc 16)
+    match_format: "BO3"          # Best of 3 cho mỗi cặp đấu
+    weight_elo: 0.5              # Trọng số điểm Elo trong tổng kết
+    weight_bracket: 0.5          # Trọng số điểm Bracket trong tổng kết

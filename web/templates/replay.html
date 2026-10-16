@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Đấu trường Trực quan 9x9 (Replay Match #{{ match_id }}) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Trực quan hóa Trận đấu #{{ match_id }} (Match Replay)</h1>
+    <div class="page-subtitle">Xem lại từng nước đi trên bàn cờ 9×9 Rock-Paper-Scissors Chess</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/" class="btn btn-sm">⬅ Về Bảng xếp hạng</a>
+    <a href="/profile" class="btn btn-sm">👤 Hồ sơ của tôi</a>
+  </div>
+</div>
+
+<div class="replay-layout" id="visualizerApp">
+  <!-- Left Side: Player 1 (Red) & Match Info -->
+  <aside class="side left">
+    <div class="player-card p1">
+      <h3>
+        <span id="p1Name">Người chơi 1</span>
+        <span class="tag red">Đỏ (P1)</span>
+      </h3>
+      <div class="target">Đích thắng: <b>i9</b> (góc phải-trên)</div>
+      <div class="counts" id="p1counts"></div>
+    </div>
+
+    <div class="card" style="font-size: 13px;">
+      <h4 style="margin: 0 0 8px; color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">
+        Thông tin Trận đấu
+      </h4>
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div>Mã trận: <b>#{{ match_id }}</b></div>
+        <div>Phím tắt: <b>←</b> Lùi / <b>→</b> Tiến / <b>Space</b> Dừng</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Center Section: 9x9 Board & Replay Controls -->
+  <section class="board-wrap">
+    <div class="turn-banner" id="turnBanner">Đang tải dữ liệu trận đấu...</div>
+
+    <div class="board-container">
+      <div class="ranks" id="ranks"></div>
+      <div class="board" id="board"></div>
+      <div class="files" id="files"></div>
+    </div>
+
+    <div class="replay-controls">
+      <!-- Buttons Row -->
+      <div class="controls-row">
+        <button class="btn btn-sm" id="btnFirst" title="Về nước đầu tiên">⏮ Đầu</button>
+        <button class="btn btn-sm" id="btnPrev" title="Lùi 1 nước (←)">◀ Lùi</button>
+        <button class="btn btn-primary btn-sm" id="btnPlayPause" style="min-width: 90px;" title="Phát / Tạm dừng (Space)">
+          ▶ Phát
+        </button>
+        <button class="btn btn-sm" id="btnNext" title="Tiến 1 nước (→)">Tiến ▶</button>
+        <button class="btn btn-sm" id="btnLast" title="Tới nước cuối cùng">Cuối ⏭</button>
+
+        <!-- Speed Switch -->
+        <div class="speed-switch" style="margin-left: 12px;">
+          <button class="speed-btn active" data-speed="1">1x</button>
+          <button class="speed-btn" data-speed="2">2x</button>
+          <button class="speed-btn" data-speed="4">4x</button>
+        </div>
+      </div>
+
+      <!-- Scrubber Row -->
+      <div class="scrubber-row">
+        <span style="font-size: 12px; color: var(--muted);">Lượt:</span>
+        <input type="range" class="scrubber-slider" id="turnSlider" min="0" max="0" value="0">
+        <span class="turn-counter" id="turnCounter">0 / 0</span>
+      </div>
+    </div>
+
+    <!-- Winner Banner -->
+    <div class="winner-banner hidden" id="winnerBanner">
+      <h2 id="winnerTitle">Kết thúc trận đấu!</h2>
+      <p id="winnerDesc"></p>
+    </div>
+  </section>
+
+  <!-- Right Side: Player 2 (Blue) & Move Log -->
+  <aside class="side right">
+    <div class="player-card p2">
+      <h3>
+        <span id="p2Name">Người chơi 2</span>
+        <span class="tag blue">Xanh (P2)</span>
+      </h3>
+      <div class="target">Đích thắng: <b>a1</b> (góc trái-dưới)</div>
+      <div class="counts" id="p2counts"></div>
+    </div>
+
+    <div class="log-panel">
+      <h3>Nhật ký nước đi (SAN)</h3>
+      <ol class="log-list" id="logList"></ol>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/visualizer.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    const matchId = {{ match_id }};
+    const visualizer = new ReplayVisualizer({ matchId: matchId });
+
+    // Update player names from match replay once fetched
+    try {
+      const res = await fetch(`/api/matches/${matchId}`);
+      if (res.ok) {
+        const m = await res.json();
+        if (m.player1) {
+          document.getElementById('p1Name').textContent = m.player1.username;
+        }
+        if (m.player2) {
+          document.getElementById('p2Name').textContent = m.player2.username;
+        }
+      }
+    } catch (err) {
+      console.warn('Could not fetch match summary details:', err);
+    }
+  });
+</script>
+{% endblock %}

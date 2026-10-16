@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Đăng nhập (Login) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 40px auto;">
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Đăng nhập tài khoản</h2>
+    </div>
+
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="form-group">
+        <label class="form-label" for="username">Tên người dùng (Username)</label>
+        <input type="text" id="username" name="username" class="form-control" required autocomplete="username" placeholder="Nhập username...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Mật khẩu (Password)</label>
+        <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password" placeholder="Nhập mật khẩu...">
+      </div>
+
+      <div id="loginError" style="color: #f87171; font-size: 13px; margin-bottom: 12px; display: none;"></div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%;">Đăng nhập</button>
+    </form>
+
+    <div style="margin-top: 16px; text-align: center; font-size: 13px; color: var(--muted);">
+      Chưa có tài khoản? <a href="/register">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function handleLogin(e) {
+    e.preventDefault();
+    const errorEl = document.getElementById('loginError');
+    errorEl.style.display = 'none';
+
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        errorEl.textContent = data.detail || 'Đăng nhập không thành công.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      window.location.href = '/profile';
+    } catch (err) {
+      errorEl.textContent = `Lỗi mạng: ${err.message}`;
+      errorEl.style.display = 'block';
+    }
+  }
+</script>
+{% endblock %}

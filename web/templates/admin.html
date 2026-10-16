@@ -1,0 +1,351 @@
+{% extends "base.html" %}
+
+{% block title %}Quản trị Giải đấu (Admin) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Quản trị Giải đấu (Admin Tournament Management)</h1>
+    <div class="page-subtitle">Điều khiển cổng thách đấu FFA, hệ số điểm ngày (multiplier x), và tạo nhánh đấu Bracket</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/bracket" class="btn btn-sm">🏆 Xem Cây Nhánh đấu</a>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Settings Form -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Cài đặt Giải đấu & Cổng FFA</h2>
+    </div>
+
+    <form id="adminSettingsForm" onsubmit="handleUpdateSettings(event)">
+      <div class="form-group">
+        <label class="form-label" for="portal_mode"><b>Chế độ Cổng Thách đấu FFA (Portal Mode)</b></label>
+        <select id="portal_mode" name="portal_mode" class="form-control" style="background: var(--bg-card); color: var(--text);">
+          <option value="auto" {% if settings.portal_mode == 'auto' or not settings.portal_mode %}selected{% endif %}>Auto (Theo Khung Giờ)</option>
+          <option value="true" {% if settings.portal_mode == 'true' %}selected{% endif %}>Force Open (Mở Khẩn Cấp)</option>
+          <option value="false" {% if settings.portal_mode == 'false' %}selected{% endif %}>Force Closed (Đóng Khẩn Cấp)</option>
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label" for="start_time">Giờ mở cổng (Start Time)</label>
+          <input type="time" id="start_time" name="start_time" class="form-control" value="{{ settings.start_time or '19:00' }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="end_time">Giờ đóng cổng (End Time)</label>
+          <input type="time" id="end_time" name="end_time" class="form-control" value="{{ settings.end_time or '21:00' }}" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="daily_multiplier_x">Hệ số nhân Elo hàng ngày (Daily Multiplier x)</label>
+        <input type="number" step="0.1" min="0.1" max="10.0" id="daily_multiplier_x" name="daily_multiplier_x"
+               class="form-control" value="{{ settings.daily_multiplier_x }}" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label" for="current_day">Ngày thi đấu hiện tại</label>
+          <input type="number" min="1" id="current_day" name="current_day"
+                 class="form-control" value="{{ settings.current_day }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="total_days">Tổng số ngày giải</label>
+          <input type="number" min="1" id="total_days" name="total_days"
+                 class="form-control" value="{{ settings.total_days }}" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div class="form-group">
+          <label class="form-label" for="max_turns">Giới hạn số lượt tối đa (Max Turns)</label>
+          <input type="number" min="10" max="1000" id="max_turns" name="max_turns"
+                 class="form-control" value="{{ settings.max_turns }}" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="turn_timeout_seconds">Thời gian mỗi lượt (giây)</label>
+          <input type="number" step="0.1" min="0.1" max="10.0" id="turn_timeout_seconds" name="turn_timeout_seconds"
+                 class="form-control" value="{{ settings.turn_timeout_seconds }}" required>
+        </div>
+      </div>
+
+      <div id="settingsMsg" style="margin-bottom: 12px; font-size: 13px; display: none;"></div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%;">
+        💾 Lưu Cấu hình
+      </button>
+    </form>
+  </div>
+
+  <!-- Bracket Trigger Card -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Khởi tạo Nhánh đấu (Bracket)</h2>
+    </div>
+
+    <p style="color: var(--muted); font-size: 14px; line-height: 1.5;">
+      Nhánh đấu loại trực tiếp (Single-elimination) sẽ tự động lấy danh sách Top {{ settings.top_players_count }} người chơi có điểm Elo cao nhất và đã nộp bot hoạt động để ghép cặp (Seed 1 vs 8, 2 vs 7, v.v.).
+    </p>
+
+    <div style="margin: 24px 0;">
+      <button class="btn btn-danger" onclick="triggerBracketGeneration()" style="width: 100%; padding: 12px;">
+        ⚡ Tạo / Khởi tạo lại Nhánh đấu Bracket
+      </button>
+    </div>
+
+    <div id="bracketMsg" style="font-size: 13px; display: none;"></div>
+  </div>
+</div>
+
+<!-- Benchmark Boss Arena Section -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <div>
+      <h2 class="card-title">Benchmark Boss Arena</h2>
+      <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">Graduated AI benchmark bots for tournament calibration, testing, and student challenges</div>
+    </div>
+    <div id="bossGlobalMsg" style="font-size: 13px; display: none;"></div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px;">
+    {% for boss in settings.bosses %}
+    <div class="card" style="background: var(--panel-2); border: 1px solid var(--border-subtle); display: flex; flex-direction: column; justify-content: space-between;" id="boss-card-{{ boss.boss_slug }}">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--accent); letter-spacing: 0.5px;">Level {{ boss.level }}</span>
+          {% if boss.is_deployed %}
+            <span class="tag" style="background: rgba(46, 160, 67, 0.15); color: #3fb950; border: 1px solid rgba(46, 160, 67, 0.4);" id="badge-{{ boss.boss_slug }}">Deployed</span>
+          {% else %}
+            <span class="tag" style="background: rgba(110, 118, 129, 0.15); color: var(--muted); border: 1px solid var(--border-subtle);" id="badge-{{ boss.boss_slug }}">Inactive</span>
+          {% endif %}
+        </div>
+        <h3 style="margin: 0 0 6px 0; font-size: 15px; color: var(--text-primary);">{{ boss.name }}</h3>
+        <div style="font-size: 12px; color: var(--muted); font-family: var(--font-mono); margin-bottom: 10px;">Elo: {{ boss.elo }}</div>
+        <p style="font-size: 12px; color: var(--muted); line-height: 1.4; margin: 0 0 16px 0;">
+          {{ boss.description }}
+        </p>
+      </div>
+
+      <div style="margin-top: auto;">
+        {% if boss.is_deployed %}
+          <button class="btn btn-sm btn-danger" style="width: 100%;" id="btn-{{ boss.boss_slug }}" onclick="toggleBoss('{{ boss.boss_slug }}', 'retract')">
+            Retract Boss
+          </button>
+        {% else %}
+          <button class="btn btn-sm btn-primary" style="width: 100%;" id="btn-{{ boss.boss_slug }}" onclick="toggleBoss('{{ boss.boss_slug }}', 'deploy')">
+            Deploy Boss
+          </button>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Bracket Matches Table -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Danh sách Trận đấu Bracket Hiện tại</h2>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table-dark">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Vòng đấu</th>
+          <th>Trận #</th>
+          <th>Người chơi 1</th>
+          <th>Người chơi 2</th>
+          <th>Tỉ số</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bm in bracket_matches %}
+        <tr>
+          <td>#{{ bm.id }}</td>
+          <td><b>{{ bm.round_name }}</b></td>
+          <td>Trận {{ bm.match_index }}</td>
+          <td>
+            <strong style="color: var(--p1);">{{ bm.player1.username if bm.player1 else 'Chưa xác định' }}</strong>
+          </td>
+          <td>
+            <strong style="color: var(--p2);">{{ bm.player2.username if bm.player2 else 'Chưa xác định' }}</strong>
+          </td>
+          <td>{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
+          <td>
+            {% if bm.status == 'completed' %}
+              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
+            {% else %}
+              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Đang chờ</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+            Chưa có nhánh đấu nào được tạo. Nhấn "Tạo Nhánh đấu Bracket" để bắt đầu!
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function handleUpdateSettings(e) {
+    e.preventDefault();
+    const msgEl = document.getElementById('settingsMsg');
+    msgEl.style.display = 'none';
+
+    const portalMode = document.getElementById('portal_mode').value;
+    const payload = {
+      portal_mode: portalMode,
+      start_time: document.getElementById('start_time').value,
+      end_time: document.getElementById('end_time').value,
+      daily_multiplier_x: parseFloat(document.getElementById('daily_multiplier_x').value),
+      current_day: parseInt(document.getElementById('current_day').value, 10),
+      total_days: parseInt(document.getElementById('total_days').value, 10),
+      max_turns: parseInt(document.getElementById('max_turns').value, 10),
+      turn_timeout_seconds: parseFloat(document.getElementById('turn_timeout_seconds').value),
+    };
+
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = `Lỗi: ${data.detail || 'Không thể lưu cài đặt'}`;
+        msgEl.style.display = 'block';
+        return;
+      }
+
+      msgEl.style.color = '#34d399';
+      msgEl.textContent = 'Cập nhật cấu hình giải đấu thành công!';
+      msgEl.style.display = 'block';
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      msgEl.style.color = '#f87171';
+      msgEl.textContent = `Lỗi mạng: ${err.message}`;
+      msgEl.style.display = 'block';
+    }
+  }
+
+  async function triggerBracketGeneration() {
+    if (!confirm('Bạn có chắc muốn tạo mới nhánh đấu? Các trận đấu bracket đang chờ trước đó sẽ bị thay thế.')) {
+      return;
+    }
+
+    const msgEl = document.getElementById('bracketMsg');
+    msgEl.style.display = 'block';
+    msgEl.style.color = 'var(--muted)';
+    msgEl.textContent = 'Đang xếp hạt giống và tạo nhánh đấu...';
+
+    try {
+      const res = await fetch('/api/admin/bracket/generate', {
+        method: 'POST'
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = `Lỗi: ${data.detail || 'Không thể tạo bracket'}`;
+        return;
+      }
+
+      msgEl.style.color = '#34d399';
+      msgEl.textContent = `Đã tạo nhánh đấu thành công với ${data.length} cặp đấu! Đang tải lại...`;
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (err) {
+      msgEl.style.color = '#f87171';
+      msgEl.textContent = `Lỗi mạng: ${err.message}`;
+    }
+  }
+
+  async function toggleBoss(bossSlug, action) {
+    const btn = document.getElementById(`btn-${bossSlug}`);
+    const badge = document.getElementById(`badge-${bossSlug}`);
+    const msgEl = document.getElementById('bossGlobalMsg');
+
+    if (btn) btn.disabled = true;
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.style.color = 'var(--muted)';
+      msgEl.textContent = `Processing ${action} for ${bossSlug}...`;
+    }
+
+    try {
+      const res = await fetch('/api/admin/bosses/deploy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ boss_slug: bossSlug, action: action })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (msgEl) {
+          msgEl.style.color = '#f87171';
+          msgEl.textContent = `Error: ${data.detail || 'Failed to update boss status'}`;
+        }
+        if (btn) btn.disabled = false;
+        return;
+      }
+
+      if (msgEl) {
+        msgEl.style.color = '#34d399';
+        msgEl.textContent = `Boss ${data.name || bossSlug} successfully ${data.is_deployed ? 'deployed' : 'retracted'}!`;
+      }
+
+      if (data.is_deployed) {
+        if (badge) {
+          badge.textContent = 'Deployed';
+          badge.style.background = 'rgba(46, 160, 67, 0.15)';
+          badge.style.color = '#3fb950';
+          badge.style.border = '1px solid rgba(46, 160, 67, 0.4)';
+        }
+        if (btn) {
+          btn.textContent = 'Retract Boss';
+          btn.className = 'btn btn-sm btn-danger';
+          btn.onclick = () => toggleBoss(bossSlug, 'retract');
+        }
+      } else {
+        if (badge) {
+          badge.textContent = 'Inactive';
+          badge.style.background = 'rgba(110, 118, 129, 0.15)';
+          badge.style.color = 'var(--muted)';
+          badge.style.border = '1px solid var(--border-subtle)';
+        }
+        if (btn) {
+          btn.textContent = 'Deploy Boss';
+          btn.className = 'btn btn-sm btn-primary';
+          btn.onclick = () => toggleBoss(bossSlug, 'deploy');
+        }
+      }
+    } catch (err) {
+      if (msgEl) {
+        msgEl.style.color = '#f87171';
+        msgEl.textContent = `Network error: ${err.message}`;
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+</script>
+{% endblock %}

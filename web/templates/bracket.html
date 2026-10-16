@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}Nhánh đấu Chung kết (Tournament Bracket) - Battlecode 9x9{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Nhánh đấu Chung kết (Tournament Bracket)</h1>
+    <div class="page-subtitle">Vòng chung kết nhánh đấu loại trực tiếp (Single-elimination) cho Top kỳ thủ</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/" class="btn btn-sm">⬅ Bảng xếp hạng</a>
+    <a href="/admin" class="btn btn-sm">⚙ Quản trị Admin</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header">
+    <h2 class="card-title">Cây Nhánh đấu (Bracket Matches)</h2>
+  </div>
+
+  <div class="bracket-tree">
+    {% set rounds = ['Quarterfinals', 'Semifinals', 'Finals'] %}
+    {% for r_name in rounds %}
+      <div class="bracket-round">
+        <h4>{{ r_name }}</h4>
+        {% set round_matches = [] %}
+        {% for m in bracket_matches %}
+          {% if m.round_name.lower() == r_name.lower() %}
+            <div class="bracket-match">
+              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Trận {{ m.match_index }}</div>
+              <div class="team-row {% if m.winner_id and m.winner_id == m.player1_id %}winner{% endif %}">
+                <span>{{ m.player1.username if m.player1 else 'TBD' }}</span>
+                <span>{{ m.score_p1 }}</span>
+              </div>
+              <div class="team-row {% if m.winner_id and m.winner_id == m.player2_id %}winner{% endif %}">
+                <span>{{ m.player2.username if m.player2 else 'TBD' }}</span>
+                <span>{{ m.score_p2 }}</span>
+              </div>
+              <div style="margin-top: 6px; font-size: 11px; display: flex; justify-content: space-between;">
+                <span style="color: var(--muted);">{{ m.status }}</span>
+              </div>
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Chi tiết các cặp đấu</h2>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table-dark">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Vòng</th>
+          <th>Trận #</th>
+          <th>Người chơi 1 (Đỏ)</th>
+          <th>Người chơi 2 (Xanh)</th>
+          <th>Tỉ số</th>
+          <th>Trạng thái</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bm in bracket_matches %}
+        <tr>
+          <td>#{{ bm.id }}</td>
+          <td><b>{{ bm.round_name }}</b></td>
+          <td>Trận {{ bm.match_index }}</td>
+          <td>
+            <strong style="color: var(--p1);">{{ bm.player1.username if bm.player1 else 'TBD' }}</strong>
+          </td>
+          <td>
+            <strong style="color: var(--p2);">{{ bm.player2.username if bm.player2 else 'TBD' }}</strong>
+          </td>
+          <td>{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
+          <td>
+            {% if bm.status == 'completed' %}
+              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
+            {% else %}
+              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Chưa diễn ra</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+            Chưa có nhánh đấu nào được khởi tạo.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
