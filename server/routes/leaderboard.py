@@ -22,6 +22,7 @@ def get_leaderboard(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     """Retrieve current Elo leaderboard sorted in descending rating order."""
     users = (
         db.query(User)
+        .filter(User.is_admin == False)  # noqa: E712
         .order_by(User.elo.desc(), User.wins.desc(), User.id.asc())
         .all()
     )

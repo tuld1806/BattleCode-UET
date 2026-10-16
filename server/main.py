@@ -101,6 +101,7 @@ def home_page(
     current_user = _get_optional_user(request, db)
     users = (
         db.query(User)
+        .filter(User.is_admin == False)  # noqa: E712
         .order_by(User.elo.desc(), User.wins.desc(), User.id.asc())
         .all()
     )

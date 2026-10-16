@@ -276,3 +276,75 @@ def test_profile_template_anonymous_omits_rating_chart(client: TestClient) -> No
     assert 'id="user-rating-chart-card"' not in res.text
 
 
+def test_bracket_page_normal_user_sees_no_admin_button(client: TestClient) -> None:
+    """Verify normal and anonymous users do not see admin button on /bracket."""
+    # 1. Anonymous user
+    res_anon = client.get("/bracket")
+    assert res_anon.status_code == 200
+    assert "⚙ Quản trị Admin" not in res_anon.text
+    assert 'href="/admin"' not in res_anon.text
+
+    # 2. Authenticated non-admin player
+    db = SessionLocal()
+    player = User(username="bracket_norm_player", is_admin=False, elo=1300)
+    player.set_password("p123")
+    db.add(player)
+    db.commit()
+    p_id = player.id
+    db.close()
+
+    token = "player_bracket_token"
+    ACTIVE_SESSIONS[token] = p_id
+    client.cookies.set("session_token", token)
+
+    res_player = client.get("/bracket")
+    assert res_player.status_code == 200
+    assert "⚙ Quản trị Admin" not in res_player.text
+    assert 'href="/admin"' not in res_player.text
+
+    # 3. Authenticated admin user DOES see admin link
+    db2 = SessionLocal()
+    admin = User(username="bracket_adm_user", is_admin=True, elo=1500)
+    admin.set_password("a123")
+    db2.add(admin)
+    db2.commit()
+    a_id = admin.id
+    db2.close()
+
+    adm_token = "admin_bracket_token"
+    ACTIVE_SESSIONS[adm_token] = a_id
+    client.cookies.set("session_token", adm_token)
+
+    res_admin = client.get("/bracket")
+    assert res_admin.status_code == 200
+    assert 'href="/admin"' in res_admin.text
+
+
+def test_admin_ui_navbar_and_profile_separation(client: TestClient) -> None:
+    """Verify navbar and profile page treat admin as administrator rather than player."""
+    db = SessionLocal()
+    admin = User(username="site_super_admin", is_admin=True, elo=1500)
+    admin.set_password("adm123")
+    db.add(admin)
+    db.commit()
+    admin_id = admin.id
+    db.close()
+
+    token = "site_admin_token"
+    ACTIVE_SESSIONS[token] = admin_id
+    client.cookies.set("session_token", token)
+
+    # Navbar check
+    res_home = client.get("/")
+    assert res_home.status_code == 200
+    assert "🛡️ Admin" in res_home.text
+    assert "⭐ 1500" not in res_home.text
+
+    # Profile check
+    res_prof = client.get("/profile")
+    assert res_prof.status_code == 200
+    assert "Tài khoản Quản trị viên" in res_prof.text
+    assert "uploadBotForm" not in res_prof.text
+
+
+

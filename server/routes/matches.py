@@ -67,10 +67,10 @@ def challenge_opponent(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Create an FFA challenge match between the current user and target opponent."""
-    if not _is_portal_open_now(db):
+    if current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="FFA portal is currently closed for ranked matches.",
+            detail="Admin accounts cannot participate in match challenges.",
         )
 
     if current_user.id == payload.opponent_id:
@@ -84,6 +84,18 @@ def challenge_opponent(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Opponent user not found.",
+        )
+
+    if opponent.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot challenge an admin account.",
+        )
+
+    if not _is_portal_open_now(db):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="FFA portal is currently closed for ranked matches.",
         )
 
     # Verify both users have active bot submissions

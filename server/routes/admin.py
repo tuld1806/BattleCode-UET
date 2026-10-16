@@ -182,9 +182,10 @@ def trigger_bracket_generation(
     settings = _get_all_settings_dict(db)
     top_n = settings.get("top_players_count", 8)
 
-    # Select top users with active bots
+    # Select top non-admin users with active bots
     users = (
         db.query(User)
+        .filter(User.is_admin == False)  # noqa: E712
         .order_by(User.elo.desc(), User.id.asc())
         .all()
     )

@@ -163,6 +163,13 @@ Mỗi trận đấu sau khi kết thúc sẽ sinh file replay JSON có định d
 3. **Triển Khai Đa Máy Qua Mạng Nội Bộ (LAN Access)**:
    - Server lắng nghe trên mọi giao diện mạng (`0.0.0.0:8000`).
    - Banner khởi động tự động dò IP mạng nội bộ của máy chủ (`http://<LAN_IP>:8000`) để người tổ chức cung cấp cho các máy tính khác trong cùng Wi-Fi/LAN truy cập thi đấu.
+4. **Nguyên Tắc Tách Bạch Vai Trò Quản Trị & Người Chơi (Admin-Player Decoupling Invariant)**:
+   - Tài khoản Admin (`is_admin = True`) thuần túy là tài khoản cấu hình và điều hành hệ thống, TUYỆT ĐỐI KHÔNG tham gia thi đấu như người chơi.
+   - Admin không xuất hiện trên Bảng xếp hạng (Leaderboard) hay đồ thị Elo.
+   - Admin bị chặn tải lên bot người chơi (`POST /api/bots/upload`), không thể gửi thách đấu (`POST /api/matches/challenge`) và người chơi khác không thể thách đấu tài khoản Admin.
+   - Hệ thống sinh nhánh đấu (`POST /api/admin/bracket/generate`) tự động lọc bỏ tài khoản Admin.
+   - Người chơi thông thường không nhìn thấy bất kỳ nút/đường dẫn phân quyền quản trị nào (đặc biệt tại trang `/bracket`).
+   - Khi Admin đăng nhập, thanh điều hướng hiển thị huy hiệu `Admin` thay vì điểm Elo, và trang `/profile` thông báo tài khoản quản trị hệ thống.
 
 ---
 

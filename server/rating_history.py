@@ -199,6 +199,7 @@ def get_top_teams_rating_history(
 
     top_users = (
         db.query(User)
+        .filter(User.is_admin == False)  # noqa: E712
         .order_by(User.elo.desc(), User.wins.desc(), User.id.asc())
         .limit(clamped_top)
         .all()

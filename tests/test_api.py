@@ -70,6 +70,24 @@ def test_api_leaderboard_endpoint():
     assert isinstance(res.json(), list)
 
 
+def test_admin_excluded_from_leaderboard():
+    """Verify admin accounts are strictly excluded from leaderboard rankings."""
+    # Ensure admin user exists with is_admin=True
+    with SessionLocal() as db:
+        admin_user = db.query(User).filter(User.is_admin == True).first()
+        if not admin_user:
+            admin_user = User(username="admin_test_leaderboard", is_admin=True, elo=2000)
+            admin_user.set_password("pass123")
+            db.add(admin_user)
+            db.commit()
+        admin_username = admin_user.username
+
+    res = client.get("/api/leaderboard")
+    assert res.status_code == 200
+    usernames = [entry["username"] for entry in res.json()]
+    assert admin_username not in usernames
+
+
 def test_register_and_login():
     """Verify registration, login with form/json, me, and logout lifecycle."""
     # 1. Register new user
@@ -336,3 +354,77 @@ def test_execute_match_job_direct(tmp_path):
         assert (u2_up.wins + u2_up.losses + u2_up.draws) == 1
     finally:
         db2.close()
+
+
+def test_admin_cannot_upload_bot():
+    """Verify admin accounts cannot upload player bots."""
+    h_admin = _create_admin_and_login("admin_uploader", "adminpass123")
+    bot_content = "def get_move(board, my_player, history):\n    return None\n"
+    res = client.post(
+        "/api/bots/upload",
+        headers=h_admin,
+        files={"file": ("admin_bot.py", bot_content.encode("utf-8"), "text/plain")},
+    )
+    assert res.status_code == 403
+    assert "Admin accounts cannot upload player bots" in res.json()["detail"]
+
+
+def test_admin_cannot_challenge_or_be_challenged():
+    """Verify admin accounts cannot send challenges and cannot be challenged."""
+    h_admin = _create_admin_and_login("admin_challenger", "adminpass123")
+    with SessionLocal() as db:
+        admin_info = db.query(User).filter(User.username == "admin_challenger").first()
+        admin_id = admin_info.id
+
+    h_user, user_info = _create_user_and_login("challenge_test_user", "userpass123")
+
+    # 1. Admin sends challenge -> 400
+    res_admin = client.post(
+        "/api/matches/challenge",
+        headers=h_admin,
+        json={"opponent_id": user_info["id"]},
+    )
+    assert res_admin.status_code == 400
+    assert "Admin accounts cannot participate" in res_admin.json()["detail"]
+
+    # 2. Regular user challenges admin -> 400
+    res_user = client.post(
+        "/api/matches/challenge",
+        headers=h_user,
+        json={"opponent_id": admin_id},
+    )
+    assert res_user.status_code == 400
+    assert "Cannot challenge an admin account" in res_user.json()["detail"]
+
+
+def test_admin_excluded_from_bracket_generation():
+    """Verify admin accounts are never seeded into tournament brackets even if high Elo."""
+    h_admin = _create_admin_and_login("admin_bracket_mgr", "adminpass123")
+
+    # Set admin's Elo to very high
+    with SessionLocal() as db:
+        admin_db = db.query(User).filter(User.username == "admin_bracket_mgr").first()
+        admin_id = admin_db.id
+        admin_db.elo = 5000
+        # Add an active bot directly for testing fallback
+        b = Bot(user_id=admin_db.id, filename="admin_bot.py", filepath="starter_kit/bot_template.py", is_active=True)
+        db.add(b)
+        db.commit()
+
+    # Create 2 regular users with bots
+    for i in range(1, 3):
+        h, u = _create_user_and_login(f"bracket_player_{i}")
+        bot_code = Path("starter_kit/bot_template.py").read_text(encoding="utf-8")
+        client.post(
+            "/api/bots/upload",
+            files={"file": (f"b{i}.py", bot_code.encode("utf-8"), "text/plain")},
+            headers=h,
+        )
+
+    res_bracket = client.post("/api/admin/bracket/generate", headers=h_admin)
+    assert res_bracket.status_code == 200
+    matchups = res_bracket.json()
+    for match in matchups:
+        assert match["player1_id"] != admin_id
+        assert match["player2_id"] != admin_id
+

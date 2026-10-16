@@ -23,6 +23,12 @@ async def upload_bot(
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Upload a Python bot file, validate with AST sandbox, save to disk, and mark active."""
+    if current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin accounts cannot upload player bots.",
+        )
+
     raw_filename = file.filename or "bot.py"
     if not raw_filename.endswith(".py"):
         raise HTTPException(

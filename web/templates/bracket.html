@@ -11,7 +11,9 @@
 
   <div style="display: flex; gap: 10px;">
     <a href="/" class="btn btn-sm">⬅ Bảng xếp hạng</a>
-    <a href="/admin" class="btn btn-sm">⚙ Quản trị Admin</a>
+    {% if current_user and current_user.is_admin %}
+      <a href="/admin" class="btn btn-sm">⚙ Quản trị Admin</a>
+    {% endif %}
   </div>
 </div>
 
