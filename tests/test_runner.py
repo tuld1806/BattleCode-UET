@@ -289,3 +289,19 @@ def get_move(board, my_player, history):
     )
     assert len(res["moves"]) > 0
     assert res["bot1_error"] is None
+
+
+def test_runner_with_explicit_game_engine() -> None:
+    """Verify that run_match accepts an explicit GameEngine instance."""
+    from games.rps_chess.engine import RPSChessEngine
+    engine = RPSChessEngine()
+    res = run_match(
+        BOT_TEMPLATE_PATH,
+        HEURISTIC_BOT_PATH,
+        max_turns=10,
+        engine=engine,
+    )
+    assert "match_id" in res
+    assert res["winner"] in [1, 2, None]
+    assert len(res["moves"]) > 0
+

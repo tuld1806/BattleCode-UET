@@ -26,6 +26,7 @@ import threading
 from typing import Any
 import uuid
 
+from engine.base import GameEngine
 from engine.game import GameState, create_initial_board
 
 
@@ -380,12 +381,13 @@ def run_match(
     timeout_per_turn: float = 1.0,
     player1_info: dict[str, Any] | None = None,
     player2_info: dict[str, Any] | None = None,
+    engine: GameEngine | None = None,
 ) -> dict[str, Any]:
-    """Execute a complete 9x9 Rock-Paper-Scissors Chess match between two bot scripts.
+    """Execute a complete match between two bot scripts using a GameEngine.
 
     Runs both bots in isolated worker subprocesses, enforces per-turn timeout limits,
-    tracks board states and move history, and records forfeit penalties if a bot
-    times out, crashes, or produces an invalid move.
+    tracks board states and move history via the GameEngine instance, and records
+    forfeit penalties if a bot times out, crashes, or produces an invalid move.
 
     Args:
         bot1_path: Path to Player 1 Python bot script.
@@ -394,22 +396,15 @@ def run_match(
         timeout_per_turn: Maximum duration in seconds allowed for get_move (default: 1.0).
         player1_info: Optional metadata dictionary for Player 1.
         player2_info: Optional metadata dictionary for Player 2.
+        engine: Optional GameEngine instance (defaults to RPSChessEngine).
 
     Returns:
-        Dictionary containing standardized match result and replay log:
-            - match_id: Unique match identifier string.
-            - player1: Metadata dictionary for Player 1.
-            - player2: Metadata dictionary for Player 2.
-            - winner: Winning player (1, 2, or None for draw).
-            - win_reason: Reason string ('goal', 'wipeout', 'max_turns', 'timeout',
-                          'error', 'invalid_move').
-            - total_turns: Total number of moves executed.
-            - moves: Chronological list of move record dictionaries.
-            - bot1_error: Error message string for Player 1, or None.
-            - bot2_error: Error message string for Player 2, or None.
-            - initial_board: Initial 9x9 board configuration.
-            - created_at: ISO-8601 timestamp string of match completion.
+        Dictionary containing standardized match result and replay log.
     """
+    if engine is None:
+        from games.rps_chess.engine import RPSChessEngine
+        engine = RPSChessEngine(max_turns=max_turns)
+
     match_id = (
         str(player1_info.get("match_id"))
         if player1_info and "match_id" in player1_info
@@ -434,8 +429,8 @@ def run_match(
     if player2_info:
         p2_meta.update(copy.deepcopy(player2_info))
 
-    initial_board = create_initial_board()
-    game = GameState(board=initial_board, turn=1, move_no=1, max_turns=max_turns)
+    state = engine.get_initial_state(p1_meta["id"], p2_meta["id"])
+    initial_board = copy.deepcopy(state.get("board", []))
 
     bot1_error: str | None = None
     bot2_error: str | None = None
@@ -459,7 +454,7 @@ def run_match(
                 p2_meta=p2_meta,
                 winner=winner,
                 win_reason=win_reason,
-                game=game,
+                history=state.get("history", []),
                 bot1_error=bot1_error,
                 bot2_error=bot2_error,
                 initial_board=initial_board,
@@ -478,7 +473,7 @@ def run_match(
                 p2_meta=p2_meta,
                 winner=winner,
                 win_reason=win_reason,
-                game=game,
+                history=state.get("history", []),
                 bot1_error=bot1_error,
                 bot2_error=bot2_error,
                 initial_board=initial_board,
@@ -487,14 +482,33 @@ def run_match(
         workers = {1: worker1, 2: worker2}
 
         # Main game simulation loop
-        while not game.is_game_over:
-            current_player = game.turn
+        while True:
+            winner_check, reason_check = engine.check_winner(state)
+            if winner_check is not None or reason_check:
+                winner = winner_check
+                win_reason = reason_check
+                break
+
+            move_no = state.get("move_no", 1)
+            if move_no > engine.get_max_turns():
+                s1 = engine.score_for_tiebreak(state, 1)
+                s2 = engine.score_for_tiebreak(state, 2)
+                win_reason = "max_turns"
+                if s1 > s2:
+                    winner = 1
+                elif s2 > s1:
+                    winner = 2
+                else:
+                    winner = None
+                break
+
+            current_player = state.get("turn", 1)
             opponent = 2 if current_player == 1 else 1
             active_worker = workers[current_player]
 
-            # Deepcopy board and history to prevent tampering
-            board_snapshot = copy.deepcopy(game.board)
-            history_snapshot = copy.deepcopy(game.history)
+            player_view = engine.get_player_view(state, current_player)
+            board_snapshot = copy.deepcopy(player_view.get("board", []))
+            history_snapshot = copy.deepcopy(player_view.get("history", []))
 
             ok, raw_move, err_msg, reason = active_worker.request_move(
                 board=board_snapshot,
@@ -512,11 +526,9 @@ def run_match(
                     bot2_error = err_msg
                 break
 
-            # Validate move structure and game legality
             norm_move = _normalize_move(raw_move)
-            valid_moves = game.get_valid_moves(current_player)
 
-            if norm_move is None or norm_move not in valid_moves:
+            if norm_move is None or not engine.is_action_valid(state, current_player, norm_move):
                 winner = opponent
                 win_reason = "invalid_move"
                 illegal_msg = (
@@ -529,11 +541,24 @@ def run_match(
                 break
 
             # Apply move to board state
-            game.apply_move(norm_move[0], norm_move[1])
+            state = engine.apply_action(state, current_player, norm_move)
 
-            if game.is_game_over:
-                winner = game.winner
-                win_reason = game.win_reason or "max_turns"
+            winner_after, reason_after = engine.check_winner(state)
+            if winner_after is not None or reason_after:
+                winner = winner_after
+                win_reason = reason_after
+                break
+
+            if state.get("move_no", 1) > engine.get_max_turns():
+                s1 = engine.score_for_tiebreak(state, 1)
+                s2 = engine.score_for_tiebreak(state, 2)
+                win_reason = "max_turns"
+                if s1 > s2:
+                    winner = 1
+                elif s2 > s1:
+                    winner = 2
+                else:
+                    winner = None
                 break
 
     finally:
@@ -548,7 +573,7 @@ def run_match(
         p2_meta=p2_meta,
         winner=winner,
         win_reason=win_reason,
-        game=game,
+        history=state.get("history", []),
         bot1_error=bot1_error,
         bot2_error=bot2_error,
         initial_board=initial_board,
@@ -561,39 +586,30 @@ def _format_match_result(
     p2_meta: dict[str, Any],
     winner: int | None,
     win_reason: str,
-    game: GameState,
-    bot1_error: str | None,
-    bot2_error: str | None,
-    initial_board: list[list[dict[str, Any] | None]],
+    history: list[dict[str, Any]] | None = None,
+    bot1_error: str | None = None,
+    bot2_error: str | None = None,
+    initial_board: list[list[dict[str, Any] | None]] | None = None,
+    game: GameState | None = None,
 ) -> dict[str, Any]:
-    """Format match outcomes into a standardized dictionary.
+    """Format match outcomes into a standardized dictionary."""
+    if history is None and game is not None:
+        history = game.history
+    history = history or []
 
-    Args:
-        match_id: Match identifier string.
-        p1_meta: Metadata dictionary for Player 1.
-        p2_meta: Metadata dictionary for Player 2.
-        winner: Winning player (1, 2, or None).
-        win_reason: Reason for conclusion.
-        game: GameState instance.
-        bot1_error: Player 1 error string.
-        bot2_error: Player 2 error string.
-        initial_board: 9x9 starting board matrix.
-
-    Returns:
-        Structured result dictionary.
-    """
-    # Standardize moves list with JSON-serializable list coordinates
     formatted_moves: list[dict[str, Any]] = []
-    for m in game.history:
+    for m in history:
+        from_coord = list(m["from"]) if isinstance(m.get("from"), (list, tuple)) else m.get("from")
+        to_coord = list(m["to"]) if isinstance(m.get("to"), (list, tuple)) else m.get("to")
         formatted_moves.append(
             {
-                "turn": m["turn"],
-                "player": m["player"],
-                "from": list(m["from"]),
-                "to": list(m["to"]),
-                "piece": m["piece"],
-                "captured": m["captured"],
-                "san": m["san"],
+                "turn": m.get("turn"),
+                "player": m.get("player"),
+                "from": from_coord,
+                "to": to_coord,
+                "piece": m.get("piece"),
+                "captured": m.get("captured"),
+                "san": m.get("san"),
             }
         )
 
@@ -607,9 +623,10 @@ def _format_match_result(
         "moves": formatted_moves,
         "bot1_error": bot1_error,
         "bot2_error": bot2_error,
-        "initial_board": copy.deepcopy(initial_board),
+        "initial_board": copy.deepcopy(initial_board) if initial_board is not None else [],
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+
 
 
 def save_replay(match_result: dict[str, Any], filepath: str | Path) -> None:
