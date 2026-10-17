@@ -66,7 +66,8 @@
 | **Thành viên** | Member B (Backend Lead) |
 | **Worktree** | `.worktrees/feature/multi-game-backend` |
 | **Merge priority** | 2 (sau Track A) |
-| **Chờ** | A1 (interface) + A3 (models.py) xong mới bắt đầu code |
+| **Chờ** | A1 (interface) + A3 (models.py) đã xong (Sync Point 0 READY) |
+| **Plan chi tiết** | [`docs/superpowers/plans/2026-10-17-multi-game-backend-track-b.md`](superpowers/plans/2026-10-17-multi-game-backend-track-b.md) |
 
 **File sở hữu**:
 

@@ -383,3 +383,9 @@ un_match(bot1_path, bot2_path, board_size=9, time_limit=1.0, max_turns=200, engi
    - Di chuyển dữ liệu Elo và thành tích lịch sử của tất cả người dùng hiện có vào bảng game_profiles cho trò chơi mặc định 
 ps_chess_9x9 (game_id=1).
    - Vận hành an toàn và bảo đảm tính bất biến (idempotent) khi chạy lặp lại nhiều lần.
+
+7. **Kiến Trúc Backend & Điều Phối Giải Đấu (Track B - server/game_registry.py, server/routes/)**:
+   - GameRegistry Singleton Service (`server/game_registry.py`): Quản lý nạp động và lưu bộ nhớ đệm (in-memory cache) cho các đối tượng GameEngine thông qua importlib, hỗ trợ nạp từ zip và hủy cache linh hoạt.
+   - Tuyến quản trị Admin đa trò chơi: `server/routes/admin_games.py` (tải lên plugin zip, kiểm tra AST, bật/tắt trò chơi) và `server/routes/admin_tournaments.py` (quản trị vòng đời giải đấu theo máy trạng thái open -> running -> bracket -> finished, bốc thăm Top N từ GameProfile.elo).
+   - Tuyến người chơi & Ghi danh giải đấu: `server/routes/games.py` (khám phá danh mục game, thông tin chi tiết luật chơi, ghi danh và hủy ghi danh giải đấu ràng buộc bot đang hoạt động của game tương ứng, tuân thủ nghiêm ngặt nguyên tắc tách biệt Admin-Player).
+   - Phân vùng Elo & Rating History độc lập: `server/tournament.py` và `server/rating_history.py` đọc/ghi điểm Elo và tái thiết lập quỹ đạo lịch sử trực tiếp trên thực thể GameProfile theo từng bộ môn trò chơi (game_id), bảo đảm tương thích ngược qua chuyển hướng HTTP 301 cho tuyến `/api/leaderboard` trỏ về `/api/games/rps-chess/leaderboard`.

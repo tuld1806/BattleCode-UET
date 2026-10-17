@@ -181,6 +181,8 @@
 
 ### Track B: Backend Server & Tournament System (Phụ trách: Member B)
 
+> **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-17-multi-game-backend-track-b.md`](docs/superpowers/plans/2026-10-17-multi-game-backend-track-b.md)
+
 - [ ] **Task B1**: Tạo `server/game_registry.py` — Singleton registry load và cache `GameEngine` qua importlib.
   - *Verification*: `pytest tests/test_game_registry.py` PASS.
 - [ ] **Task B2**: Tạo `server/routes/admin_games.py` — API upload plugin zip, list game, toggle `is_active`.
