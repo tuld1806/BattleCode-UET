@@ -295,18 +295,20 @@ def test_new_multi_game_models_creation(tmp_path):
     init_db()
     db = next(get_db())
     try:
-        # Create game
-        game = Game(
-            slug="rps-chess",
-            display_name="RPS Chess 9x9",
-            description_md="Classic RPS Chess rules",
-            plugin_path="games/rps_chess",
-            config_json='{"max_turns": 200}',
-            is_active=True,
-        )
-        db.add(game)
-        db.commit()
-        db.refresh(game)
+        # Ensure game exists
+        game = db.query(Game).filter(Game.slug == "rps-chess").first()
+        if not game:
+            game = Game(
+                slug="rps-chess",
+                display_name="RPS Chess 9x9",
+                description_md="Classic RPS Chess rules",
+                plugin_path="games/rps_chess",
+                config_json='{"max_turns": 200}',
+                is_active=True,
+            )
+            db.add(game)
+            db.commit()
+            db.refresh(game)
         assert game.id is not None
         assert game.slug == "rps-chess"
 

@@ -1,9 +1,16 @@
-"""Leaderboard rankings and user profile API routes."""
+"""Leaderboard rankings and user profile API routes.
+
+The legacy ``GET /api/leaderboard`` endpoint now issues a **301 Permanent
+Redirect** to ``/api/games/rps-chess/leaderboard`` so existing clients and
+bookmarks continue working while per-game leaderboards become the canonical
+source of ranking data.
+"""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from server.database import get_db
@@ -16,32 +23,13 @@ from server.rating_history import (
 router = APIRouter(prefix="/leaderboard", tags=["leaderboard"])
 
 
-
-@router.get("", response_model=List[Dict[str, Any]])
-def get_leaderboard(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
-    """Retrieve current Elo leaderboard sorted in descending rating order."""
-    users = (
-        db.query(User)
-        .filter(User.is_admin == False)  # noqa: E712
-        .order_by(User.elo.desc(), User.wins.desc(), User.id.asc())
-        .all()
+@router.get("", response_class=RedirectResponse, status_code=status.HTTP_301_MOVED_PERMANENTLY)
+def get_leaderboard_redirect() -> RedirectResponse:
+    """Permanently redirect legacy leaderboard to the default game leaderboard."""
+    return RedirectResponse(
+        url="/api/games/rps-chess/leaderboard",
+        status_code=status.HTTP_301_MOVED_PERMANENTLY,
     )
-
-    rankings: List[Dict[str, Any]] = []
-    for rank_idx, user in enumerate(users, start=1):
-        has_active = any(bot.is_active for bot in user.bots)
-        rankings.append({
-            "rank": rank_idx,
-            "id": user.id,
-            "username": user.username,
-            "elo": user.elo,
-            "wins": user.wins,
-            "losses": user.losses,
-            "draws": user.draws,
-            "has_active_bot": has_active,
-        })
-
-    return rankings
 
 
 @router.get("/rating-history")

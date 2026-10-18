@@ -182,16 +182,22 @@ def execute_match_job(
             match.p1_elo_after = r1
             match.p2_elo_after = r2
 
-        # Update player win/loss/draw records (global stats remain unchanged for per-game tracking)
+        # Update player win/loss/draw records (both global and per-game)
         if winner_code == 1:
             player1.wins += 1
             player2.losses += 1
+            profile1.wins += 1
+            profile2.losses += 1
         elif winner_code == 2:
             player2.wins += 1
             player1.losses += 1
+            profile2.wins += 1
+            profile1.losses += 1
         else:
             player1.draws += 1
             player2.draws += 1
+            profile1.draws += 1
+            profile2.draws += 1
 
         db.commit()
         return match_result

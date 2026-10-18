@@ -7,14 +7,15 @@ from typing import Any, List
 from sqlalchemy.orm import Session
 
 from server.bosses import BOSS_REGISTRY, get_all_bosses, get_boss
-from server.models import Bot, User
+from server.models import Bot, GameProfile, User
 
 
-def get_all_bosses_status(db: Session) -> List[dict[str, Any]]:
+def get_all_bosses_status(db: Session, game_id: int = 1) -> List[dict[str, Any]]:
     """Retrieve current deployment and rating status for all registered boss bots.
 
     Args:
         db: Active SQLAlchemy database session.
+        game_id: Game identifier to query per-game Elo from GameProfile (default 1).
 
     Returns:
         List of boss status dictionaries sorted by level ascending.
@@ -31,7 +32,12 @@ def get_all_bosses_status(db: Session) -> List[dict[str, Any]]:
 
         if user:
             user_id = user.id
-            elo = user.elo
+            # Read Elo from GameProfile if available, otherwise fallback to user.elo
+            profile = db.query(GameProfile).filter(
+                GameProfile.user_id == user.id,
+                GameProfile.game_id == game_id,
+            ).first()
+            elo = profile.elo if profile else user.elo
             active_bot = (
                 db.query(Bot)
                 .filter(Bot.user_id == user.id, Bot.is_active == True)  # noqa: E712
@@ -57,12 +63,16 @@ def get_all_bosses_status(db: Session) -> List[dict[str, Any]]:
     return statuses
 
 
-def deploy_boss(db: Session, boss_slug: str) -> dict[str, Any]:
+def deploy_boss(db: Session, boss_slug: str, game_id: int = 1) -> dict[str, Any]:
     """Deploy a registered boss bot by creating or activating its user account and bot record.
+
+    Also ensures a GameProfile exists for the boss at the specified game_id with
+    the boss's default Elo rating.
 
     Args:
         db: Active SQLAlchemy database session.
         boss_slug: Identifier slug of the boss to deploy.
+        game_id: Game identifier to associate the bot and GameProfile with (default 1).
 
     Returns:
         Updated status dictionary of the deployed boss.
@@ -100,17 +110,35 @@ def deploy_boss(db: Session, boss_slug: str) -> dict[str, Any]:
             filename=f"{boss_slug}_bot.py",
             filepath=boss_meta["file_path"],
             is_active=True,
+            game_id=game_id,
         )
         db.add(bot)
     else:
         bot.filename = f"{boss_slug}_bot.py"
         bot.filepath = boss_meta["file_path"]
         bot.is_active = True
+        bot.game_id = game_id
 
     # Ensure any unexpected duplicate bots for this user are deactivated
     other_bots = db.query(Bot).filter(Bot.user_id == user.id, Bot.id != bot.id).all()
     for extra_bot in other_bots:
         extra_bot.is_active = False
+
+    # Ensure GameProfile exists for this boss at the specified game_id
+    profile = db.query(GameProfile).filter(
+        GameProfile.user_id == user.id,
+        GameProfile.game_id == game_id,
+    ).first()
+    if not profile:
+        profile = GameProfile(
+            user_id=user.id,
+            game_id=game_id,
+            elo=boss_meta["default_elo"],
+            wins=0,
+            losses=0,
+            draws=0,
+        )
+        db.add(profile)
 
     db.commit()
     db.refresh(user)
