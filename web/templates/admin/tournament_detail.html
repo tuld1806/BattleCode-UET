@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}Quản trị Giải đấu: {{ tournament.name if tournament else 'Chi tiết Giải' }} - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
+      <a href="/admin/tournaments" style="color: var(--text-muted); font-size: 13px;">&larr; Quay lại danh sách giải đấu</a>
+      <span style="color: var(--border-subtle);">|</span>
+      <span class="tag" style="background: rgba(88, 166, 255, 0.15); color: #58a6ff;">{{ tournament.game_slug or 'RPS Chess' }}</span>
+      {% if tournament.status == 'open' %}
+        <span class="portal-badge open"><span class="dot"></span> Đang mở đăng ký</span>
+      {% elif tournament.status == 'running' %}
+        <span class="portal-badge open"><span class="dot"></span> Vòng FFA đang chạy</span>
+      {% elif tournament.status == 'bracket' %}
+        <span class="portal-badge" style="background: rgba(227, 179, 65, 0.15); color: #e3b341; border: 1px solid rgba(227, 179, 65, 0.4);"><span class="dot"></span> Vòng Playoff Bracket</span>
+      {% elif tournament.status == 'finished' %}
+        <span class="portal-badge closed"><span class="dot"></span> Đã kết thúc</span>
+      {% endif %}
+    </div>
+    <h1 class="page-title">{{ tournament.name if tournament else 'Chi tiết Giải đấu' }}</h1>
+    <div class="page-subtitle">Quản trị viên điều phối danh sách tuyển thủ, tiến trình FFA và nhánh đấu Playoff BO3</div>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+    <button class="btn btn-sm btn-success btn-export-csv" onclick="exportBracketScoresCsv({{ tournament.id if tournament else '' }})" title="Tải file CSV (UTF-8-SIG) mở trực tiếp trên Excel">
+      📊 Xuất Bảng Điểm (CSV)
+    </button>
+    <a href="/bracket{% if tournament %}?tournament_id={{ tournament.id }}{% endif %}" class="btn btn-sm">
+      🏆 Xem Cây Nhánh đấu
+    </a>
+  </div>
+</div>
+
+<!-- Tournament Overview Grid -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+  <!-- Left: Bracket & Progression Control -->
+  <div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 class="card-title">Khởi tạo Nhánh đấu Playoff</h2>
+      <span style="font-size: 12px; color: var(--text-muted);">Hạt giống Top {{ tournament.bracket_top_n if tournament else 8 }}</span>
+    </div>
+
+    <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 20px;">
+      Khi kết thúc giai đoạn FFA, Admin kích hoạt nhánh đấu loại trực tiếp (Single-elimination). Hệ thống sẽ chọn Top {{ tournament.bracket_top_n if tournament else 8 }} tuyển thủ có điểm Elo cao nhất đã nộp bot hoạt động để ghép cặp.
+    </p>
+
+    <div style="display: flex; gap: 12px; align-items: center;">
+      <button class="btn btn-danger" onclick="openBracketPasswordModal({{ tournament.id if tournament else '' }})" style="padding: 10px 18px; font-weight: 600;">
+        ⚡ Khởi động / Tạo lại Nhánh đấu Bracket
+      </button>
+      <div id="bracketStatusMsg" style="font-size: 13px; color: var(--text-muted);"></div>
+    </div>
+  </div>
+
+  <!-- Right: Tournament Parameters -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Thông số Giải đấu</h2>
+    </div>
+
+    <div style="font-size: 13px; display: flex; flex-direction: column; gap: 10px;">
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+        <span style="color: var(--text-muted);">Khung giờ FFA:</span>
+        <b>{{ tournament.ffa_start_time or '19:00' }} - {{ tournament.ffa_end_time or '21:00' }}</b>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+        <span style="color: var(--text-muted);">Hệ số nhân Elo:</span>
+        <span class="multiplier-tag">x{{ tournament.elo_multiplier or '1.0' }}</span>
+      </div>
+      <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+        <span style="color: var(--text-muted);">Tổng tuyển thủ ghi danh:</span>
+        <b>{{ tournament.enrolled_count or (tournament.enrollments | length if tournament and tournament.enrollments else 0) }}</b>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Playoff Bracket Matches Table Card -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h2 class="card-title">Các Trận đấu Vòng Playoff Bracket (BO3)</h2>
+      <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+        Thực thi các trận đấu Best-of-3 tự động giữa các bot tuyển thủ và tự động đôn người thắng
+      </div>
+    </div>
+
+    <!-- Match Execution Toolbar -->
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <button id="btnRunRound" class="btn btn-sm btn-primary" onclick="runBracketRound({{ tournament.id if tournament else '' }})">
+        ▶️ Chạy Vòng Hiện Tại
+      </button>
+      <button id="btnRunAll" class="btn btn-sm btn-warning" onclick="runAllBracketRounds({{ tournament.id if tournament else '' }})">
+        ⏩ Chạy Toàn Bộ (Run All)
+      </button>
+      <button class="btn btn-sm btn-outline btn-export-csv" onclick="exportBracketScoresCsv({{ tournament.id if tournament else '' }})" title="Tải bảng điểm CSV chuẩn hóa">
+        📥 Xuất CSV
+      </button>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table-dark">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Vòng đấu</th>
+          <th>Trận #</th>
+          <th>Kỳ thủ 1</th>
+          <th>Kỳ thủ 2</th>
+          <th>Tỉ số (BO3)</th>
+          <th>Trạng thái</th>
+          <th>Replay</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for bm in bracket_matches %}
+        <tr>
+          <td>#{{ bm.id }}</td>
+          <td><b>{{ bm.round_name }}</b></td>
+          <td>Trận {{ bm.match_index }}</td>
+          <td>
+            <strong style="color: var(--p1);">{{ bm.player1.username if bm.player1 else 'Chưa xác định' }}</strong>
+          </td>
+          <td>
+            <strong style="color: var(--p2);">{{ bm.player2.username if bm.player2 else 'Chưa xác định' }}</strong>
+          </td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
+          <td>
+            {% if bm.status == 'completed' %}
+              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
+            {% else %}
+              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Đang chờ</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if bm.status == 'completed' %}
+              <div style="display: flex; gap: 4px;">
+                <a href="/replay/bracket_{{ bm.id }}_game_1" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;">G1</a>
+                <a href="/replay/bracket_{{ bm.id }}_game_2" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;">G2</a>
+                {% if bm.score_p1 + bm.score_p2 > 2 %}
+                <a href="/replay/bracket_{{ bm.id }}_game_3" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;">G3</a>
+                {% endif %}
+              </div>
+            {% else %}
+              <span style="color: var(--text-muted); font-size: 12px;">Chưa đấu</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">
+            Chưa có nhánh đấu nào được tạo cho giải đấu này. Bấm "Khởi động / Tạo lại Nhánh đấu Bracket" để bắt đầu!
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Xác Nhận Mật Khẩu Khi Tạo Bracket -->
+<div id="bracketPasswordModal" class="modal-overlay" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">⚠️ Xác nhận Tạo Nhánh đấu Bracket</h3>
+      <button type="button" class="modal-close" onclick="closeBracketPasswordModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+        Thao tác này là hành động bảo mật: hệ thống sẽ khóa danh sách đăng ký giải, hủy các cặp đấu pending cũ và xếp hạt giống Top kỳ thủ. Vui lòng nhập mật khẩu quản trị viên để xác thực:
+      </p>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" for="adminBracketPassword"><b>Mật khẩu Quản trị viên (Admin Password)</b></label>
+        <div style="position: relative;">
+          <input type="password" id="adminBracketPassword" class="form-control" placeholder="Nhập mật khẩu Admin..."
+                 style="padding-right: 40px;" onkeydown="if(event.key==='Enter') submitBracketGeneration({{ tournament.id if tournament else '' }})">
+          <button type="button" id="btnTogglePasswordView" onclick="toggleBracketPasswordVisibility()"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted);"
+                  title="Hiện/Ẩn mật khẩu">👁</button>
+        </div>
+      </div>
+      <div id="bracketPasswordError" style="display: none; color: #f87171; font-size: 13px; margin-top: 6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn" onclick="closeBracketPasswordModal()">Hủy bỏ</button>
+      <button type="button" id="btnConfirmGenerateBracket" class="btn btn-danger" onclick="submitBracketGeneration({{ tournament.id if tournament else '' }})">
+        ⚡ Xác nhận Tạo Bracket
+      </button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/admin_bracket.js"></script>
+{% endblock %}

@@ -9,7 +9,10 @@
     <div class="page-subtitle">Điều khiển cổng thách đấu FFA, hệ số điểm ngày (multiplier x), và tạo nhánh đấu Bracket</div>
   </div>
 
-  <div style="display: flex; gap: 10px;">
+  <div style="display: flex; gap: 10px; align-items: center;">
+    <button class="btn btn-sm btn-success btn-export-csv" onclick="exportBracketScoresCsv()" title="Tải file CSV (UTF-8-SIG) mở trực tiếp trên Excel">
+      📊 Xuất Điểm CSV (Excel)
+    </button>
     <a href="/bracket" class="btn btn-sm">🏆 Xem Cây Nhánh đấu</a>
   </div>
 </div>
@@ -96,7 +99,7 @@
     </p>
 
     <div style="margin: 24px 0;">
-      <button class="btn btn-danger" onclick="triggerBracketGeneration()" style="width: 100%; padding: 12px;">
+      <button class="btn btn-danger" onclick="openBracketPasswordModal()" style="width: 100%; padding: 12px; font-weight: 600;">
         ⚡ Tạo / Khởi tạo lại Nhánh đấu Bracket
       </button>
     </div>
@@ -152,8 +155,26 @@
 
 <!-- Bracket Matches Table -->
 <div class="card">
-  <div class="card-header">
-    <h2 class="card-title">Danh sách Trận đấu Bracket Hiện tại</h2>
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+    <div>
+      <h2 class="card-title">Danh sách Trận đấu Bracket Hiện tại</h2>
+      <div style="font-size: 13px; color: var(--muted); margin-top: 4px;">
+        Điều khiển thi đấu BO3 tự động theo từng vòng và thăng hạng kỳ thủ
+      </div>
+    </div>
+
+    <!-- Execution Toolbar -->
+    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+      <button id="btnRunRound" class="btn btn-sm btn-primary" onclick="runBracketRound()">
+        ▶️ Chạy Vòng Hiện Tại
+      </button>
+      <button id="btnRunAll" class="btn btn-sm btn-warning" onclick="runAllBracketRounds()">
+        ⏩ Chạy Toàn Bộ (Run All)
+      </button>
+      <button class="btn btn-sm btn-outline btn-export-csv" onclick="exportBracketScoresCsv()" title="Xuất kết quả nhánh đấu ra Excel CSV">
+        📥 Xuất CSV
+      </button>
+    </div>
   </div>
 
   <div class="table-wrap">
@@ -167,6 +188,7 @@
           <th>Người chơi 2</th>
           <th>Tỉ số</th>
           <th>Trạng thái</th>
+          <th>Replay BO3</th>
         </tr>
       </thead>
       <tbody>
@@ -181,7 +203,7 @@
           <td>
             <strong style="color: var(--p2);">{{ bm.player2.username if bm.player2 else 'Chưa xác định' }}</strong>
           </td>
-          <td>{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
+          <td style="font-family: var(--font-mono); font-weight: 600;">{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
           <td>
             {% if bm.status == 'completed' %}
               <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
@@ -189,16 +211,61 @@
               <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Đang chờ</span>
             {% endif %}
           </td>
+          <td>
+            {% if bm.status == 'completed' %}
+              <div style="display: flex; gap: 4px;">
+                <a href="/replay/bracket_{{ bm.id }}_game_1" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" title="Xem ván 1">G1</a>
+                <a href="/replay/bracket_{{ bm.id }}_game_2" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" title="Xem ván 2">G2</a>
+                {% if bm.score_p1 + bm.score_p2 > 2 %}
+                <a href="/replay/bracket_{{ bm.id }}_game_3" class="btn btn-sm" style="padding: 2px 6px; font-size: 11px;" title="Xem ván 3">G3</a>
+                {% endif %}
+              </div>
+            {% else %}
+              <span style="color: var(--muted); font-size: 12px;">Chưa đấu</span>
+            {% endif %}
+          </td>
         </tr>
         {% else %}
         <tr>
-          <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+          <td colspan="8" style="text-align: center; color: var(--muted); padding: 24px;">
             Chưa có nhánh đấu nào được tạo. Nhấn "Tạo Nhánh đấu Bracket" để bắt đầu!
           </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- Modal Xác Nhận Mật Khẩu Khi Tạo Bracket -->
+<div id="bracketPasswordModal" class="modal-overlay" style="display: none;">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">⚠️ Xác nhận Tạo Nhánh đấu Bracket</h3>
+      <button type="button" class="modal-close" onclick="closeBracketPasswordModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="color: var(--text-muted); font-size: 13px; line-height: 1.5; margin-bottom: 16px;">
+        Thao tác này là hành động bảo mật: hệ thống sẽ khóa danh sách thi đấu, hủy các cặp đấu pending cũ và xếp hạt giống Top kỳ thủ. Vui lòng nhập mật khẩu quản trị viên để xác thực:
+      </p>
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label class="form-label" for="adminBracketPassword"><b>Mật khẩu Quản trị viên (Admin Password)</b></label>
+        <div style="position: relative;">
+          <input type="password" id="adminBracketPassword" class="form-control" placeholder="Nhập mật khẩu Admin..."
+                 style="padding-right: 40px;" onkeydown="if(event.key==='Enter') submitBracketGeneration()">
+          <button type="button" id="btnTogglePasswordView" onclick="toggleBracketPasswordVisibility()"
+                  style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; cursor: pointer; font-size: 14px; color: var(--text-muted);"
+                  title="Hiện/Ẩn mật khẩu">👁</button>
+        </div>
+      </div>
+      <div id="bracketPasswordError" style="display: none; color: #f87171; font-size: 13px; margin-top: 6px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn" onclick="closeBracketPasswordModal()">Hủy bỏ</button>
+      <button type="button" id="btnConfirmGenerateBracket" class="btn btn-danger" onclick="submitBracketGeneration()">
+        ⚡ Xác nhận Tạo Bracket
+      </button>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -242,42 +309,14 @@
       msgEl.style.display = 'block';
       setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
-      msgEl.style.color = '#f87171';
+      msgEl.color = '#f87171';
       msgEl.textContent = `Lỗi mạng: ${err.message}`;
       msgEl.style.display = 'block';
     }
   }
 
-  async function triggerBracketGeneration() {
-    if (!confirm('Bạn có chắc muốn tạo mới nhánh đấu? Các trận đấu bracket đang chờ trước đó sẽ bị thay thế.')) {
-      return;
-    }
-
-    const msgEl = document.getElementById('bracketMsg');
-    msgEl.style.display = 'block';
-    msgEl.style.color = 'var(--muted)';
-    msgEl.textContent = 'Đang xếp hạt giống và tạo nhánh đấu...';
-
-    try {
-      const res = await fetch('/api/admin/bracket/generate', {
-        method: 'POST'
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        msgEl.style.color = '#f87171';
-        msgEl.textContent = `Lỗi: ${data.detail || 'Không thể tạo bracket'}`;
-        return;
-      }
-
-      msgEl.style.color = '#34d399';
-      msgEl.textContent = `Đã tạo nhánh đấu thành công với ${data.length} cặp đấu! Đang tải lại...`;
-      setTimeout(() => window.location.reload(), 1000);
-    } catch (err) {
-      msgEl.style.color = '#f87171';
-      msgEl.textContent = `Lỗi mạng: ${err.message}`;
-    }
-  }
+  // Bracket generation is handled with password verification via admin_bracket.js:
+  // window.openBracketPasswordModal(), window.submitBracketGeneration()
 
   async function toggleBoss(bossSlug, action) {
     const btn = document.getElementById(`btn-${bossSlug}`);
@@ -348,4 +387,5 @@
     }
   }
 </script>
+<script src="/static/js/admin_bracket.js"></script>
 {% endblock %}
