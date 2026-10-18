@@ -115,17 +115,26 @@ Administrators can deploy and retract five server-side benchmark bots into the a
 
 On the concluding day of the tournament:
 1. **Lock FFA Portal**: Set operating mode to `Force Closed` to prevent further regular matches.
-2. **Generate Championship Bracket**:
+2. **Generate Championship Bracket (Password Confirmed)**:
    - In the Admin Dashboard, click **Generate Playoff Bracket (Top 8 / Top 16)**.
+   - For security, a modal prompt requires entering the **Administrator Password** before the destructive reset and seeding occurs.
    - The tournament engine seeds the highest-ranking bots by cumulative Elo:
      - Match 1: Seed 1 vs Seed 8
      - Match 2: Seed 4 vs Seed 5
      - Match 3: Seed 2 vs Seed 7
      - Match 4: Seed 3 vs Seed 6
-3. **Public Bracket View**:
-   - Competitors inspect live playoff progress at [http://localhost:8000/bracket](http://localhost:8000/bracket).
-4. **Final Composite Scoring**:
-   $$\text{Final Score} = 0.5 \times \text{Normalized Elo} + 0.5 \times \text{Bracket Points}$$
+3. **Execute Playoff Matches (Best-of-3 Series)**:
+   - Administrators execute matches round-by-round (`Run Next Round`) or all at once (`Run All Playoff Matches`).
+   - Matchups run in Best-of-3 (BO3) format with alternating Red/Blue sides to eliminate first-player advantage.
+   - Winners automatically advance from Quarterfinals to Semifinals and Finals until the Champion is decided.
+4. **Public Bracket View**:
+   - Competitors inspect live playoff progress and scores at [http://localhost:8000/bracket](http://localhost:8000/bracket).
+5. **Excel Score Export & Final Composite Scoring**:
+   - Click **Export Final Scores (Excel/CSV)** to download an RFC 4180 CSV file formatted with UTF-8 BOM (`utf-8-sig`) for immediate, native opening in Microsoft Excel and Google Sheets with full Vietnamese character support.
+   - Scoring formula:
+     $$\text{Final Score} = 0.5 \times \text{Normalized Elo} + 0.5 \times \text{Bracket Points}$$
+   - Bracket point distribution: Champion = 100 pts, Runner-up = 80 pts, Semifinalists = 60 pts, Quarterfinalists = 40 pts.
+
 
 ---
 

@@ -213,7 +213,20 @@
 - [ ] **Task C7**: Cập nhật `tests/test_web.py` — Thêm route test cho tất cả trang mới.
   - *Verification*: `pytest tests/test_web.py` PASS.
 
+### Playoff Bracket Security, BO3 Execution & Excel Export
+
+> **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md`](docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md)  
+> **Đặc tả thiết kế**: [`docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md`](docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md)
+
+- [ ] **Task BK1 (Security)**: Bổ sung xác thực mật khẩu Admin (`AdminConfirmPasswordPayload`) khi gọi `POST /api/admin/bracket/generate` và `/api/admin/tournaments/{id}/start-bracket`.
+  - *Verification*: `pytest tests/test_admin_security.py` PASS (nhập đúng mật khẩu -> 200, sai mật khẩu -> 403).
+- [ ] **Task BK2 (BO3 Runner)**: Xây dựng `server/bracket_runner.py` tự động thi đấu BO3 cho các cặp trong nhánh đấu, luân phiên đổi bên Red/Blue, lưu replay và tự động đôn người thắng từ Tứ kết → Bán kết → Chung kết.
+  - *Verification*: `pytest tests/test_bracket_runner.py` PASS.
+- [ ] **Task BK3 (Score Export)**: Xây dựng `server/bracket_export.py` xuất bảng điểm chung cuộc ra file CSV chuẩn Excel (UTF-8-SIG) kèm nút bấm trên Web UI.
+  - *Verification*: `pytest tests/test_bracket_export.py` PASS (file CSV có BOM `\ufeff`, đầy đủ điểm tổng kết).
+
 ### Integration (Cả Nhóm — Ngày cuối)
+
 
 - [ ] **Task 11.1**: Merge theo thứ tự: Track A → Track B → Track C → `main`.
   - *Verification*: `pytest -v` xanh 100% trên `main` sau mỗi merge.

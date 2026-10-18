@@ -392,3 +392,9 @@ ps_chess_9x9 (game_id=1).
    - Phân vùng Elo & Rating History độc lập: `server/tournament.py` và `server/rating_history.py` đọc/ghi điểm Elo và tái thiết lập quỹ đạo lịch sử trực tiếp trên thực thể GameProfile theo từng bộ môn trò chơi (game_id), bảo đảm tương thích ngược qua chuyển hướng HTTP 301 cho tuyến `/api/leaderboard` trỏ về `/api/games/rps-chess/leaderboard`.
    - Bảng xếp hạng kết hợp Fallback: Tuyến `/api/games/{slug}/leaderboard` ưu tiên xếp hạng theo GameProfile của game chỉ định, đồng thời hỗ trợ fallback tự động lấy `User.elo` cho các người chơi mới đăng ký chưa kịp enroll giải đấu, loại trừ triệt để tài khoản Admin. Toàn bộ test suite đạt 357/357 tests PASS (100%).
 
+8. **Điều Hành Chung Kết Nhánh Đấu & Xuất Báo Cáo Điểm (Playoff Bracket & Export)**:
+   - Xác thực Mật khẩu Quản trị viên (Password Confirmation): Khởi tạo hoặc tái thiết lập nhánh đấu bắt buộc nhập mật khẩu Admin (`AdminConfirmPasswordPayload`), ngăn chặn tuyệt đối thao tác bấm nhầm phá hủy dữ liệu giải đấu đang diễn ra.
+   - Trình thực thi Nhánh đấu BO3 (Best-of-3 Runner): Tự động nạp bot active của 2 kỳ thủ trong cặp đấu, thi đấu 3 ván đổi bên (Red/Blue luân phiên), xử lý walkover (2-0) nếu thiếu bot, cập nhật tỉ số và tự động đôn người chiến thắng qua các vòng Tứ kết → Bán kết → Chung kết cho đến khi xác định Nhà vô địch.
+   - Xuất Bảng Điểm Excel Chuẩn (UTF-8-SIG CSV): Tính toán điểm tổng hợp ($0.5 \times \text{Normalized Elo} + 0.5 \times \text{Bracket Points}$), sinh file CSV kèm UTF-8 BOM (`\ufeff`) bảo đảm mở trực tiếp trên Microsoft Excel và Google Sheets hiển thị tiếng Việt hoàn hảo không lỗi font.
+
+
