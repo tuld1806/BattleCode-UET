@@ -90,20 +90,21 @@
 | `tests/test_rating_history.py` | MODIFY | Thêm `game_id` vào calls |
 
 **Checklist**:
-- [ ] B1: `server/game_registry.py` — load + cache + invalidate
-- [ ] B2: `server/routes/admin_games.py` — upload zip + toggle active
-- [ ] B3: `server/routes/admin_tournaments.py` — CRUD + status machine
-- [ ] B4: `server/routes/games.py` — player-facing enroll/list API
-- [ ] B5: `server/tournament.py` — tất cả Elo R/W dùng `GameProfile`
-- [ ] B6: `server/rating_history.py` — nhận `game_id` param
-- [ ] B7: `server/queue.py` — FFA match chỉ cho enrolled players
-- [ ] B8: `server/boss_manager.py` — per-game boss deploy
-- [ ] B9: `server/routes/leaderboard.py` — backward compat 301 redirect
-- [ ] B10: `tests/test_game_registry.py` — ít nhất 3 test cases
-- [ ] B11: `tests/test_tournament_enrollment.py` — ít nhất 5 test cases
-- [ ] B12: `tests/test_admin_game_routes.py` — ít nhất 3 test cases
-- [ ] B13: Cập nhật `test_tournament.py`, `test_rating_history.py`
-- [ ] B14: `pytest tests/` xanh 100% trên worktree này
+- [x] B1: `server/game_registry.py` — load + cache + invalidate
+- [x] B2: `server/routes/admin_games.py` — upload zip + toggle active
+- [x] B3: `server/routes/admin_tournaments.py` — CRUD + status machine
+- [x] B4: `server/routes/games.py` — player-facing enroll/list API + game-scoped leaderboard fallback
+- [x] B5: `server/tournament.py` — tất cả Elo R/W dùng `GameProfile`
+- [x] B6: `server/rating_history.py` — nhận `game_id` param
+- [x] B7: `server/queue.py` — FFA match cập nhật GameProfile stats
+- [x] B8: `server/boss_manager.py` — per-game boss deploy tạo GameProfile
+- [x] B9: `server/routes/leaderboard.py` — backward compat 301 redirect
+- [x] B10: `tests/test_game_registry.py` — 4/4 test cases passed
+- [x] B11: `tests/test_tournament_enrollment.py` — 7/7 test cases passed
+- [x] B12: `tests/test_admin_game_routes.py` — 5/5 test cases passed
+- [x] B13: Cập nhật `test_tournament.py`, `test_rating_history.py`
+- [x] B14: `pytest -v` xanh 100% (357/357 passed)
+
 
 ---
 

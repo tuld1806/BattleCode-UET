@@ -386,6 +386,9 @@ ps_chess_9x9 (game_id=1).
 
 7. **Kiến Trúc Backend & Điều Phối Giải Đấu (Track B - server/game_registry.py, server/routes/)**:
    - GameRegistry Singleton Service (`server/game_registry.py`): Quản lý nạp động và lưu bộ nhớ đệm (in-memory cache) cho các đối tượng GameEngine thông qua importlib, hỗ trợ nạp từ zip và hủy cache linh hoạt.
+   - Cơ chế Seed tự động & Toàn vẹn Khóa ngoại (`server/database.py:init_db`): Tự động seed bản ghi Game mặc định (`id=1, slug='rps-chess'`) khi khởi tạo DB, bảo đảm tính toàn vẹn khóa ngoại (Foreign Key Integrity) cho `bots.game_id` và `game_profiles.game_id` trong mọi môi trường kiểm thử và production.
    - Tuyến quản trị Admin đa trò chơi: `server/routes/admin_games.py` (tải lên plugin zip, kiểm tra AST, bật/tắt trò chơi) và `server/routes/admin_tournaments.py` (quản trị vòng đời giải đấu theo máy trạng thái open -> running -> bracket -> finished, bốc thăm Top N từ GameProfile.elo).
    - Tuyến người chơi & Ghi danh giải đấu: `server/routes/games.py` (khám phá danh mục game, thông tin chi tiết luật chơi, ghi danh và hủy ghi danh giải đấu ràng buộc bot đang hoạt động của game tương ứng, tuân thủ nghiêm ngặt nguyên tắc tách biệt Admin-Player).
    - Phân vùng Elo & Rating History độc lập: `server/tournament.py` và `server/rating_history.py` đọc/ghi điểm Elo và tái thiết lập quỹ đạo lịch sử trực tiếp trên thực thể GameProfile theo từng bộ môn trò chơi (game_id), bảo đảm tương thích ngược qua chuyển hướng HTTP 301 cho tuyến `/api/leaderboard` trỏ về `/api/games/rps-chess/leaderboard`.
+   - Bảng xếp hạng kết hợp Fallback: Tuyến `/api/games/{slug}/leaderboard` ưu tiên xếp hạng theo GameProfile của game chỉ định, đồng thời hỗ trợ fallback tự động lấy `User.elo` cho các người chơi mới đăng ký chưa kịp enroll giải đấu, loại trừ triệt để tài khoản Admin. Toàn bộ test suite đạt 357/357 tests PASS (100%).
+

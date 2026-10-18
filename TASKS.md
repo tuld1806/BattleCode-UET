@@ -183,18 +183,18 @@
 
 > **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-17-multi-game-backend-track-b.md`](docs/superpowers/plans/2026-10-17-multi-game-backend-track-b.md)
 
-- [ ] **Task B1**: Tạo `server/game_registry.py` — Singleton registry load và cache `GameEngine` qua importlib.
-  - *Verification*: `pytest tests/test_game_registry.py` PASS.
-- [ ] **Task B2**: Tạo `server/routes/admin_games.py` — API upload plugin zip, list game, toggle `is_active`.
-  - *Verification*: `pytest tests/test_admin_game_routes.py` PASS (valid upload, malicious upload rejected, toggle).
-- [ ] **Task B3**: Tạo `server/routes/admin_tournaments.py` — CRUD tournament, status transition, start bracket.
-  - *Verification*: Admin có thể tạo tournament, chuyển trạng thái `open → running → bracket → finished`.
-- [ ] **Task B4**: Tạo `server/routes/games.py` — Player-facing API: list games, game detail, tournament enroll/un-enroll.
-  - *Verification*: `pytest tests/test_tournament_enrollment.py` PASS (ít nhất 5 cases).
-- [ ] **Task B5**: Cập nhật `server/tournament.py` — Tất cả Elo đọc/ghi từ `GameProfile.elo`, không còn `User.elo`.
-  - *Verification*: `pytest tests/test_tournament.py` PASS sau khi cập nhật.
-- [ ] **Task B6**: Cập nhật `server/rating_history.py`, `server/queue.py`, `server/boss_manager.py`, `server/routes/leaderboard.py` — Thêm `game_id` scope + backward compat 301 redirect cho `/api/leaderboard`.
-  - *Verification*: `GET /api/leaderboard` trả về 301 redirect tới `/api/games/rps-chess/leaderboard`.
+- [x] **Task B1**: Tạo `server/game_registry.py` — Singleton registry load và cache `GameEngine` qua importlib.
+  - *Verification*: `pytest tests/test_game_registry.py` -> 4/4 PASS.
+- [x] **Task B2**: Tạo `server/routes/admin_games.py` — API upload plugin zip, list game, toggle `is_active`.
+  - *Verification*: `pytest tests/test_admin_game_routes.py` -> 5/5 PASS (valid upload, malicious upload rejected, toggle).
+- [x] **Task B3**: Tạo `server/routes/admin_tournaments.py` — CRUD tournament, status transition, start bracket.
+  - *Verification*: `pytest tests/test_admin_tournament_routes.py` -> 4/4 PASS (Admin CRUD tournament, chuyển trạng thái `open → running → bracket → finished`, seeding top N).
+- [x] **Task B4**: Tạo `server/routes/games.py` — Player-facing API: list games, game detail, tournament enroll/un-enroll, leaderboard fallback.
+  - *Verification*: `pytest tests/test_tournament_enrollment.py` -> 7/7 PASS.
+- [x] **Task B5**: Cập nhật `server/tournament.py` — Tất cả Elo đọc/ghi từ `GameProfile.elo`, không còn `User.elo`.
+  - *Verification*: `pytest tests/test_tournament.py` -> 18/18 PASS.
+- [x] **Task B6**: Cập nhật `server/rating_history.py`, `server/queue.py`, `server/boss_manager.py`, `server/routes/leaderboard.py` — Thêm `game_id` scope + backward compat 301 redirect cho `/api/leaderboard`.
+  - *Verification*: `pytest -v` -> 357/357 PASS (100%), `GET /api/leaderboard` trả về 301 redirect tới `/api/games/rps-chess/leaderboard`.
 
 ### Track C: Frontend & Templates (Phụ trách: Member C)
 
