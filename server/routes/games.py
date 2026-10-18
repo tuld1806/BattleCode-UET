@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import json
 from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from server.database import get_db
 from server.models import Bot, Game, GameProfile, Tournament, TournamentEnrollment, User
+from server.rating_history import get_top_teams_rating_history, get_user_rating_history
 from server.routes.auth import get_current_user
 
 router = APIRouter(prefix="/games", tags=["games"])
@@ -245,3 +246,128 @@ def unenroll_from_tournament(
         "tournament_id": tourney.id,
         "message": f"Successfully un-enrolled from {tourney.name}.",
     }
+
+
+@router.get("/{slug}/leaderboard", response_model=List[Dict[str, Any]])
+def get_game_leaderboard(
+    slug: str,
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """Retrieve per-game Elo leaderboard ordered by rating descending.
+
+    Non-admin users with a GameProfile for the specified game are ranked by profile.
+    Falls back to global User.elo/wins/losses/draws for users without a GameProfile,
+    ensuring newly registered players appear on the leaderboard seamlessly.
+    Strictly excludes administrator accounts.
+    """
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game and slug == "rps-chess":
+        from server.database import seed_default_game
+        seed_default_game(db_session=db)
+        game = db.query(Game).filter(Game.slug == slug).first()
+
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Game '{slug}' not found.")
+
+    profiles = (
+        db.query(GameProfile)
+        .join(User, GameProfile.user_id == User.id)
+        .filter(
+            GameProfile.game_id == game.id,
+            User.is_admin == False,  # noqa: E712
+        )
+        .all()
+    )
+
+    seen_user_ids = set()
+    entries: List[Dict[str, Any]] = []
+
+    for profile in profiles:
+        user = db.query(User).filter(User.id == profile.user_id).first()
+        if not user or user.is_admin:
+            continue
+        has_active = any(
+            bot.is_active for bot in db.query(Bot).filter(Bot.user_id == user.id).all()
+        )
+        entries.append({
+            "id": user.id,
+            "username": user.username,
+            "elo": profile.elo,
+            "wins": profile.wins,
+            "losses": profile.losses,
+            "draws": profile.draws,
+            "has_active_bot": has_active,
+        })
+        seen_user_ids.add(user.id)
+
+    # Fallback: include registered non-admin users without a GameProfile
+    fallback_users = (
+        db.query(User)
+        .filter(User.is_admin == False)  # noqa: E712
+        .all()
+    )
+    for u in fallback_users:
+        if u.id not in seen_user_ids:
+            has_active = any(
+                bot.is_active for bot in db.query(Bot).filter(Bot.user_id == u.id).all()
+            )
+            entries.append({
+                "id": u.id,
+                "username": u.username,
+                "elo": u.elo if u.elo is not None else 1200,
+                "wins": u.wins if u.wins is not None else 0,
+                "losses": u.losses if u.losses is not None else 0,
+                "draws": u.draws if u.draws is not None else 0,
+                "has_active_bot": has_active,
+            })
+            seen_user_ids.add(u.id)
+
+    # Sort descending by elo, then wins, then ascending by user id
+    entries.sort(key=lambda x: (x["elo"], x["wins"], -x["id"]), reverse=True)
+
+    rankings: List[Dict[str, Any]] = []
+    for rank_idx, entry in enumerate(entries, start=1):
+        rankings.append({
+            "rank": rank_idx,
+            "id": entry["id"],
+            "username": entry["username"],
+            "elo": entry["elo"],
+            "wins": entry["wins"],
+            "losses": entry["losses"],
+            "draws": entry["draws"],
+            "has_active_bot": entry["has_active_bot"],
+        })
+
+    return rankings
+
+
+@router.get("/{slug}/rating-history")
+def get_game_rating_history(
+    slug: str,
+    top: int = Query(5, ge=1, le=10),
+    limit: int = Query(30, ge=5, le=100),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Retrieve top-N rating trajectories scoped to a specific game."""
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Game '{slug}' not found.")
+    return get_top_teams_rating_history(db=db, game_id=game.id, top=top, limit=limit)
+
+
+@router.get("/{slug}/users/{user_id}/rating-history")
+def get_game_user_rating_history(
+    slug: str,
+    user_id: int,
+    limit: int = Query(50, ge=5, le=100),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Retrieve per-game Elo trajectory for a specific user."""
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Game '{slug}' not found.")
+    history = get_user_rating_history(user_id=user_id, db=db, game_id=game.id, limit=limit)
+    if history is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found.")
+    return history
+

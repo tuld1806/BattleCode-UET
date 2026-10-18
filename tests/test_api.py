@@ -63,11 +63,19 @@ def _create_user_and_login(username="player_test", password="testpassword123"):
     return {"Authorization": f"Bearer {token}"}, user_info
 
 
+def test_leaderboard_redirect_301():
+    """Verify legacy GET /api/leaderboard issues a 301 Permanent Redirect to /api/games/rps-chess/leaderboard."""
+    res = client.get("/api/leaderboard", follow_redirects=False)
+    assert res.status_code == 301
+    assert "/api/games/rps-chess/leaderboard" in res.headers.get("location", "")
+
+
 def test_api_leaderboard_endpoint():
     """Verify leaderboard endpoint returns list of users with ranking details."""
     res = client.get("/api/leaderboard")
     assert res.status_code == 200
     assert isinstance(res.json(), list)
+
 
 
 def test_admin_excluded_from_leaderboard():

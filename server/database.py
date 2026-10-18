@@ -63,25 +63,31 @@ def seed_default_game(db_session: Optional[Session] = None, target_engine=None) 
         close_after = True
 
     try:
-        existing = db.query(Game).filter(Game.slug == "rps-chess").first()
-        if not existing:
-            default_game = Game(
-                id=1,
-                slug="rps-chess",
-                display_name="RPS Chess 9x9",
-                description_md="Two players battle on a 9x9 grid using Rock, Paper, Scissors pieces.",
-                plugin_path="games/rps_chess",
-                config_json='{"max_turns": 200, "bot_interface": "python_function", "timeout_ms": 1000}',
-                is_active=True,
-            )
-            db.add(default_game)
-            db.commit()
+        from sqlalchemy import or_
+        existing = db.query(Game).filter(or_(Game.id == 1, Game.slug == "rps-chess")).first()
+        if existing:
+            if existing.slug != "rps-chess":
+                existing.slug = "rps-chess"
+                db.commit()
+            return
+
+        default_game = Game(
+            id=1,
+            slug="rps-chess",
+            display_name="RPS Chess 9x9",
+            description_md="Two players battle on a 9x9 grid using Rock, Paper, Scissors pieces.",
+            plugin_path="games/rps_chess",
+            config_json='{"max_turns": 200, "bot_interface": "python_function", "timeout_ms": 1000}',
+            is_active=True,
+        )
+        db.add(default_game)
+        db.commit()
     except Exception:
         db.rollback()
-        raise
     finally:
         if close_after:
             db.close()
+
 
 
 def init_db(target_engine=None) -> None:

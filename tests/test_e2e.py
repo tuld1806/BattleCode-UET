@@ -31,7 +31,7 @@ def setup_and_teardown_e2e_env():
     """Ensure a pristine database and clean filesystem for every test run."""
     ACTIVE_SESSIONS.clear()
     Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
+    init_db(target_engine=engine)
     yield
     ACTIVE_SESSIONS.clear()
     Base.metadata.drop_all(bind=engine)
