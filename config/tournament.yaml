@@ -6,8 +6,8 @@ tournament:
   
   # Khung giờ mở cổng thi đấu FFA hàng ngày
   daily_schedule:
-    start_time: "19:00"          # Giờ mở cổng (24h format)
-    end_time: "21:00"            # Giờ đóng cổng
+    start_time: "00:01"          # Giờ mở cổng (24h format)
+    end_time: "23:59"            # Giờ đóng cổng
     is_portal_open: false        # Trạng thái mở cổng hiện tại (admin có thể ghi đè trên Web)
 
   # Cấu hình điểm số & Elo

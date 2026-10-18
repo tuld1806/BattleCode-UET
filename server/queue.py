@@ -13,7 +13,7 @@ from typing import Any, Callable
 
 from engine.runner import run_match, save_replay
 from server.database import SessionLocal
-from server.models import Match, TournamentSetting, User
+from server.models import Match, TournamentSetting, User, GameProfile, Game
 from server.tournament import apply_elo_change, calculate_elo_delta
 from server.tournament_config import load_tournament_config
 
@@ -126,13 +126,35 @@ def execute_match_job(
         else:
             match.winner_id = None
 
-        # Record pre-match Elo ratings
-        r1 = player1.elo
-        r2 = player2.elo
-        match.p1_elo_before = r1
-        match.p2_elo_before = r2
+        
 
-        # Update Elo ratings for non-bracket matches
+        # Determine game ID (default to 1) and ensure Game exists
+        game_id = match.game_id or 1
+        game = db.query(Game).filter(Game.id == game_id).first()
+        if not game:
+            # Create a minimal placeholder Game with required non-null columns
+            game = Game(id=game_id, slug=f"game_{game_id}", display_name=f"Game {game_id}")
+            db.add(game)
+            db.commit()
+        # Retrieve or create per-game profiles for both players
+        profile1 = db.query(GameProfile).filter(GameProfile.user_id == player1.id, GameProfile.game_id == game_id).first()
+        if not profile1:
+            profile1 = GameProfile(user_id=player1.id, game_id=game_id, elo=player1.elo)
+            db.add(profile1)
+            db.commit()
+        profile2 = db.query(GameProfile).filter(GameProfile.user_id == player2.id, GameProfile.game_id == game_id).first()
+        if not profile2:
+            profile2 = GameProfile(user_id=player2.id, game_id=game_id, elo=player2.elo)
+            db.add(profile2)
+            db.commit()
+        # Set initial Elo values, respecting any pre-set bracket Elo values
+        if match.is_bracket:
+            r1 = match.p1_elo_before if match.p1_elo_before is not None else profile1.elo
+            r2 = match.p2_elo_before if match.p2_elo_before is not None else profile2.elo
+        else:
+            r1 = profile1.elo
+            r2 = profile2.elo
+        # Update Elo ratings for non-bracket matches using GameProfile
         if not match.is_bracket:
             if winner_code == 1:
                 score_1 = 1.0
@@ -141,12 +163,17 @@ def execute_match_job(
             else:
                 score_1 = 0.5
 
+
+
             delta_1, delta_2 = calculate_elo_delta(
                 r1, r2, score=score_1, multiplier=multiplier_x, k=k_factor
             )
             new_r1 = apply_elo_change(r1, delta_1)
             new_r2 = apply_elo_change(r2, delta_2)
 
+            profile1.elo = new_r1
+            profile2.elo = new_r2
+            # Also update global User Elo for leaderboard
             player1.elo = new_r1
             player2.elo = new_r2
             match.p1_elo_after = new_r1
@@ -155,7 +182,7 @@ def execute_match_job(
             match.p1_elo_after = r1
             match.p2_elo_after = r2
 
-        # Update player win/loss/draw records
+        # Update player win/loss/draw records (global stats remain unchanged for per-game tracking)
         if winner_code == 1:
             player1.wins += 1
             player2.losses += 1

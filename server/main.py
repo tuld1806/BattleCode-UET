@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from server.database import get_db, init_db
 from server.models import Bot, BracketMatch, Match, User
-from server.routes import admin, auth, bots, leaderboard, matches
+from server.routes import admin, admin_games, admin_tournaments, auth, bots, leaderboard, matches, games
 from server.routes.admin import _get_all_settings_dict
 from server.routes.auth import ACTIVE_SESSIONS, get_token_from_request
 from server.routes.matches import _is_portal_open_now
@@ -67,6 +67,9 @@ app.include_router(bots.router, prefix="/api")
 app.include_router(matches.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
+app.include_router(admin_games.router, prefix="/api")
+app.include_router(games.router, prefix="/api")
+app.include_router(admin_tournaments.router, prefix="/api")
 
 
 @app.get("/api/users/{user_id}/rating-history", tags=["users"])
