@@ -16,8 +16,11 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def setup_and_teardown_db():
     """Ensure clean database and tables for every test."""
-    init_db()
+    from server.database import Base
+    Base.metadata.drop_all(bind=engine)
+    init_db(target_engine=engine)
     yield
+    Base.metadata.drop_all(bind=engine)
     engine.dispose()
     for db_artifact in ["app.db", "app.db-shm", "app.db-wal"]:
         if os.path.exists(db_artifact):

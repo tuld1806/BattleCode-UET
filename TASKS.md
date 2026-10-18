@@ -229,16 +229,3 @@
 
 ---
 
-## Milestone 12: Tách Bạch Tuyệt Đối Vai Trò Admin & Người Chơi (Admin-Player Decoupling)
-
-> **Trạng thái**: Hoàn thành.
-> **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-17-admin-player-separation.md`](docs/superpowers/plans/2026-10-17-admin-player-separation.md)
-
-- [x] **Task 12.1**: Cập nhật SSOT `docs/CONTEXT_RESUME.md` Section 10 Rule 4.
-- [x] **Task 12.2**: Lọc bỏ Admin khỏi `GET /api/leaderboard` và giao diện homepage leaderboard.
-- [x] **Task 12.3**: Chặn Admin tham gia thi đấu (Match challenge) và nộp bot người chơi.
-- [x] **Task 12.4**: Lọc bỏ Admin khỏi thuật toán sinh nhánh đấu giải đấu (`/api/admin/bracket/generate`).
-- [x] **Task 12.5**: Ẩn nút quản trị Admin trên giao diện Bracket và phân tách UI cho Admin trên Navbar & Profile.
-- [x] **Task 12.6**: Chạy toàn bộ test suite `py -m pytest -v` đảm bảo 100% PASS và kiểm thử hồi quy.
-
-
