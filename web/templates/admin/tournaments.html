@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Quản trị Giải đấu - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="/admin/dashboard" style="color: var(--text-muted); font-size: 13px;">&larr; Bảng điều khiển</a>
+    </div>
+    <h1 class="page-title">🏆 Quản Trị Danh Sách Giải Đấu</h1>
+    <div class="page-subtitle">Khởi tạo và điều phối các giải đấu thuộc từng bộ môn trò chơi</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+  <!-- Tournaments List -->
+  <div class="card">
+    <div class="card-header flex-between">
+      <h2 class="card-title">Các Giải Đấu Đã Tạo</h2>
+      <span class="badge">{{ tournaments|length }} Giải</span>
+    </div>
+
+    <div class="card-body">
+      {% if tournaments %}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Tên giải</th>
+                <th>Bộ môn</th>
+                <th>Trạng thái</th>
+                <th>FFA Khung giờ</th>
+                <th style="text-align: right;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in tournaments %}
+                <tr>
+                  <td>
+                    <strong>{{ t.name }}</strong>
+                    <div style="font-size: 11px; color: var(--text-muted);">Top {{ t.bracket_top_n }} Playoff &bull; {{ t.elo_multiplier }}x</div>
+                  </td>
+                  <td>
+                    <span class="badge" style="background: rgba(88, 166, 255, 0.15); color: #58a6ff;">{{ t.game.display_name if t.game else 'RPS Chess' }}</span>
+                  </td>
+                  <td>
+                    <span class="status-badge status-{{ t.status }}">{{ t.status }}</span>
+                  </td>
+                  <td style="font-size: 12px; color: var(--text-muted);">
+                    {{ t.ffa_start_time }} - {{ t.ffa_end_time }} ({{ t.ffa_day_count }} ngày)
+                  </td>
+                  <td style="text-align: right;">
+                    <a href="/admin/tournaments/{{ t.id }}" class="btn btn-sm btn-primary">
+                      Điều phối &rarr;
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <p class="text-muted">Chưa có giải đấu nào được tạo.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Create Tournament Form -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Tạo Giải Đấu Mới</h2>
+    </div>
+
+    <form id="createTourneyForm" onsubmit="handleCreateTournament(event)" style="padding-top: 10px;">
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label">Chọn Bộ môn Trò chơi</label>
+        <select id="tourney_game_id" name="game_id" class="form-control" required style="background: var(--bg-card); color: var(--text);">
+          {% for g in games %}
+            <option value="{{ g.id }}">{{ g.display_name }} ({{ g.slug }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 14px;">
+        <label class="form-label">Tên Giải Đấu</label>
+        <input type="text" id="tourney_name" name="name" class="form-control" placeholder="VD: Giải Vô Địch Mùa Xuân 2026" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+        <div class="form-group">
+          <label class="form-label">Giờ bắt đầu FFA</label>
+          <input type="time" id="tourney_start" name="ffa_start_time" class="form-control" value="19:00" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Giờ kết thúc FFA</label>
+          <input type="time" id="tourney_end" name="ffa_end_time" class="form-control" value="21:00" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+        <div class="form-group">
+          <label class="form-label">Số ngày FFA</label>
+          <input type="number" min="1" max="30" id="tourney_days" name="ffa_day_count" class="form-control" value="7" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Top Playoff (N)</label>
+          <input type="number" min="2" max="64" id="tourney_top_n" name="bracket_top_n" class="form-control" value="8" required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">
+        Khởi Tạo Giải Đấu
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+async function handleCreateTournament(e) {
+  e.preventDefault();
+  const form = e.target;
+  const payload = {
+    game_id: parseInt(form.game_id.value, 10),
+    name: form.name.value.trim(),
+    ffa_start_time: form.ffa_start_time.value,
+    ffa_end_time: form.ffa_end_time.value,
+    ffa_day_count: parseInt(form.ffa_day_count.value, 10),
+    bracket_top_n: parseInt(form.bracket_top_n.value, 10),
+    elo_multiplier: 1.0,
+    enrollment_open: true
+  };
+
+  try {
+    const res = await fetch('/api/admin/tournaments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      alert(`Khởi tạo giải đấu '${data.name}' thành công!`);
+      window.location.reload();
+    } else {
+      alert(`Lỗi: ${data.detail || 'Không thể tạo giải đấu.'}`);
+    }
+  } catch (err) {
+    alert(`Lỗi kết nối: ${err.message}`);
+  }
+}
+</script>
+{% endblock %}

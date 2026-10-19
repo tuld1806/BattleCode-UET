@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Người dùng & Bot - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="/admin/dashboard" style="color: var(--text-muted); font-size: 13px;">&larr; Bảng điều khiển</a>
+    </div>
+    <h1 class="page-title">👥 Quản Lý Tài Khoản Người Dùng</h1>
+    <div class="page-subtitle">Xem danh sách người chơi, thông tin xếp hạng Elo và trạng thái nạp bot</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header flex-between">
+    <h2 class="card-title">Danh Sách Người Dùng</h2>
+    <span class="badge">{{ users|length }} Tài khoản</span>
+  </div>
+
+  <div class="card-body">
+    {% if users %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">ID</th>
+              <th>Tên người dùng</th>
+              <th>Vai trò</th>
+              <th>Elo mặc định</th>
+              <th>Thành tích (W/L/D)</th>
+              <th>Bot kích hoạt</th>
+              <th style="text-align: right;">Ngày tham gia</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+              <tr>
+                <td>{{ u.id }}</td>
+                <td>
+                  <strong>{{ u.username }}</strong>
+                </td>
+                <td>
+                  {% if u.is_admin %}
+                    <span class="badge" style="background: rgba(218, 54, 51, 0.2); color: #f87171;">🛡️ Admin</span>
+                  {% else %}
+                    <span class="badge" style="background: rgba(88, 166, 255, 0.15); color: #58a6ff;">Kỳ thủ</span>
+                  {% endif %}
+                </td>
+                <td><strong style="color: var(--accent);">{{ u.elo }}</strong></td>
+                <td>
+                  <span style="color: #3fb950;">{{ u.wins }}</span> /
+                  <span style="color: #f85149;">{{ u.losses }}</span> /
+                  <span style="color: var(--text-muted);">{{ u.draws }}</span>
+                </td>
+                <td>
+                  {% set active_bots = u.bots|selectattr('is_active')|list %}
+                  {% if active_bots %}
+                    <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">
+                      🤖 {{ active_bots[0].filename }}
+                    </span>
+                  {% else %}
+                    <span class="text-muted" style="font-size: 12px;">Chưa kích hoạt</span>
+                  {% endif %}
+                </td>
+                <td style="text-align: right; font-size: 12px; color: var(--text-muted);">
+                  {{ u.created_at.strftime('%d/%m/%Y') if u.created_at else '-' }}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p class="text-muted">Chưa có người dùng nào.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

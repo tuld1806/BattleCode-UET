@@ -350,23 +350,31 @@ def replay_page(
     )
 
 
+def _require_admin_web_user(request: Request, db: Session, target_path: str) -> User | Response:
+    """Ensure user is logged in as admin; redirect to login or raise 403."""
+    user = _get_optional_user(request, db)
+    if user is None:
+        return RedirectResponse(
+            url=f"/login?next={target_path}",
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrative privileges required.",
+        )
+    return user
+
+
 @app.get("/admin", response_class=HTMLResponse, tags=["web"])
 def admin_page(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
     """Render tournament configuration management and bracket generator page."""
-    current_user = _get_optional_user(request, db)
-    if current_user is None:
-        return RedirectResponse(
-            url="/login?next=/admin",
-            status_code=status.HTTP_303_SEE_OTHER,
-        )
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Administrative privileges required.",
-        )
+    admin_auth = _require_admin_web_user(request, db, "/admin")
+    if isinstance(admin_auth, Response):
+        return admin_auth
 
     settings = _get_all_settings_dict(db)
     bracket_matches = (
@@ -381,7 +389,157 @@ def admin_page(
         context={
             "settings": settings,
             "bracket_matches": bracket_matches,
-            "current_user": current_user,
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/dashboard", response_class=HTMLResponse, tags=["web"])
+def admin_dashboard_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the master admin operational overview dashboard."""
+    admin_auth = _require_admin_web_user(request, db, "/admin/dashboard")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    games = db.query(Game).order_by(Game.id.asc()).all()
+    tournaments = db.query(Tournament).order_by(Tournament.created_at.desc()).all()
+    users = db.query(User).order_by(User.id.asc()).all()
+    bracket_matches = db.query(BracketMatch).order_by(BracketMatch.id.asc()).all()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/dashboard.html",
+        context={
+            "games": games,
+            "tournaments": tournaments,
+            "users": users,
+            "bracket_matches": bracket_matches,
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/games", response_class=HTMLResponse, tags=["web"])
+def admin_games_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the admin games plugin catalog and status toggles."""
+    admin_auth = _require_admin_web_user(request, db, "/admin/games")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    games = db.query(Game).order_by(Game.id.asc()).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/games.html",
+        context={
+            "games": games,
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/games/upload", response_class=HTMLResponse, tags=["web"])
+def admin_games_upload_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the admin game plugin zip upload portal."""
+    admin_auth = _require_admin_web_user(request, db, "/admin/games/upload")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/game_upload.html",
+        context={
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/tournaments", response_class=HTMLResponse, tags=["web"])
+def admin_tournaments_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the admin tournaments management and creation view."""
+    admin_auth = _require_admin_web_user(request, db, "/admin/tournaments")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    tournaments = db.query(Tournament).order_by(Tournament.created_at.desc()).all()
+    games = db.query(Game).filter(Game.is_active == True).order_by(Game.id.asc()).all()  # noqa: E712
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/tournaments.html",
+        context={
+            "tournaments": tournaments,
+            "games": games,
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/tournaments/{tournament_id}", response_class=HTMLResponse, tags=["web"])
+def admin_tournament_detail_page(
+    tournament_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the admin tournament coordination and playoff bracket control view."""
+    admin_auth = _require_admin_web_user(request, db, f"/admin/tournaments/{tournament_id}")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    tournament = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tournament:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found.",
+        )
+
+    bracket_matches = db.query(BracketMatch).order_by(BracketMatch.id.asc()).all()
+    enrollments = (
+        db.query(TournamentEnrollment)
+        .filter(TournamentEnrollment.tournament_id == tournament_id)
+        .order_by(TournamentEnrollment.enrolled_at.asc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/tournament_detail.html",
+        context={
+            "tournament": tournament,
+            "bracket_matches": bracket_matches,
+            "enrollments": enrollments,
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/users", response_class=HTMLResponse, tags=["web"])
+def admin_users_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the admin registered accounts and player bot statuses."""
+    admin_auth = _require_admin_web_user(request, db, "/admin/users")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    users = db.query(User).order_by(User.id.asc()).all()
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/users.html",
+        context={
+            "users": users,
+            "current_user": admin_auth,
         },
     )
 

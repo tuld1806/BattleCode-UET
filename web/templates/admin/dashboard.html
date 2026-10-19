@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Bảng Điều Khiển Quản Trị (Dashboard) - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <h1 class="page-title">🛡️ Trung Tâm Quản Trị Hệ Thống</h1>
+    <div class="page-subtitle">Tổng quan số liệu vận hành và điều khiển các phân hệ trò chơi, giải đấu</div>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <a href="/admin/tournaments" class="btn btn-sm btn-primary">🏆 Quản lý Giải đấu</a>
+    <a href="/admin/games" class="btn btn-sm">🎮 Danh mục Trò chơi</a>
+  </div>
+</div>
+
+<div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+  <div class="card stat-card" style="padding: 20px; background: rgba(22, 27, 34, 0.8);">
+    <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 6px;">🎮 BỘ MÔN TRÒ CHƠI</div>
+    <div style="font-size: 2rem; font-weight: 800; color: var(--accent);">{{ games|length if games else 0 }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Đang kích hoạt trên sảnh</div>
+  </div>
+
+  <div class="card stat-card" style="padding: 20px; background: rgba(22, 27, 34, 0.8);">
+    <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 6px;">🏆 GIẢI ĐẤU</div>
+    <div style="font-size: 2rem; font-weight: 800; color: #3fb950;">{{ tournaments|length if tournaments else 0 }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Giải đấu đã thiết lập</div>
+  </div>
+
+  <div class="card stat-card" style="padding: 20px; background: rgba(22, 27, 34, 0.8);">
+    <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 6px;">👥 NGƯỜI DÙNG</div>
+    <div style="font-size: 2rem; font-weight: 800; color: #f0f6fc;">{{ users|length if users else 0 }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Tài khoản đăng ký</div>
+  </div>
+
+  <div class="card stat-card" style="padding: 20px; background: rgba(22, 27, 34, 0.8);">
+    <div style="color: var(--text-muted); font-size: 13px; margin-bottom: 6px;">⚔️ TRẬN ĐẤU NHÁNH ĐẤU</div>
+    <div style="font-size: 2rem; font-weight: 800; color: #e3b341;">{{ bracket_matches|length if bracket_matches else 0 }}</div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">Trận Playoff đã tạo</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+  <!-- Fast Links Box -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Phân Hệ Quản Trị Trực Tiếp</h2>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; padding: 12px 0;">
+      <a href="/admin/games" class="card" style="padding: 14px; text-decoration: none; color: inherit; background: rgba(22, 27, 34, 0.6); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: var(--text-primary);">🎮 Quản lý Plugin Trò chơi</strong>
+          <div style="font-size: 12px; color: var(--text-muted);">Xem danh sách game, bật/tắt hiển thị, tải lên zip game mới</div>
+        </div>
+        <span style="color: var(--accent);">&rarr;</span>
+      </a>
+
+      <a href="/admin/tournaments" class="card" style="padding: 14px; text-decoration: none; color: inherit; background: rgba(22, 27, 34, 0.6); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: var(--text-primary);">🏆 Quản trị Giải đấu &amp; Nhánh Playoff</strong>
+          <div style="font-size: 12px; color: var(--text-muted);">Tạo giải mới, điều phối trạng thái, chạy vòng BO3 và xuất điểm Excel</div>
+        </div>
+        <span style="color: var(--accent);">&rarr;</span>
+      </a>
+
+      <a href="/admin/users" class="card" style="padding: 14px; text-decoration: none; color: inherit; background: rgba(22, 27, 34, 0.6); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: var(--text-primary);">👥 Quản lý Người dùng &amp; Bot</strong>
+          <div style="font-size: 12px; color: var(--text-muted);">Kiểm tra danh sách kỳ thủ, điểm xếp hạng Elo và trạng thái nạp bot</div>
+        </div>
+        <span style="color: var(--accent);">&rarr;</span>
+      </a>
+
+      <a href="/admin" class="card" style="padding: 14px; text-decoration: none; color: inherit; background: rgba(22, 27, 34, 0.6); display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <strong style="color: var(--text-primary);">⚙️ Cấu hình Cổng FFA &amp; Boss Arena</strong>
+          <div style="font-size: 12px; color: var(--text-muted);">Thiết lập khung giờ thách đấu và hệ số nhân điểm ngày</div>
+        </div>
+        <span style="color: var(--accent);">&rarr;</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Recent Tournaments Overview -->
+  <div class="card">
+    <div class="card-header flex-between">
+      <h2 class="card-title">Giải Đấu Gần Đây</h2>
+      <a href="/admin/tournaments" style="font-size: 13px; color: var(--accent);">Xem tất cả &rarr;</a>
+    </div>
+    <div style="padding: 8px 0;">
+      {% if tournaments %}
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          {% for t in tournaments[:5] %}
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(13, 17, 23, 0.6); border: 1px solid var(--border-subtle); border-radius: 6px;">
+              <div>
+                <strong>{{ t.name }}</strong>
+                <div style="font-size: 11px; color: var(--text-muted);">{{ t.game.display_name if t.game else 'RPS Chess' }} &bull; Top {{ t.bracket_top_n }}</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="status-badge status-{{ t.status }}">{{ t.status }}</span>
+                <a href="/admin/tournaments/{{ t.id }}" class="btn btn-sm">Chi tiết</a>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="text-muted" style="text-align: center; padding: 24px;">Chưa có giải đấu nào trong hệ thống.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

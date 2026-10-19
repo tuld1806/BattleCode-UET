@@ -508,6 +508,121 @@ def test_profile_game_cards_and_navbar_lobby(client: TestClient) -> None:
     assert 'href="/lobby"' in res.text
 
 
+def test_admin_portal_routes_unauthenticated_redirect(client: TestClient) -> None:
+    """Verify that all /admin/* routes redirect anonymous visitors to login."""
+    admin_routes = [
+        "/admin/dashboard",
+        "/admin/games",
+        "/admin/games/upload",
+        "/admin/tournaments",
+        "/admin/tournaments/1",
+        "/admin/users",
+    ]
+    for route in admin_routes:
+        res = client.get(route, follow_redirects=False)
+        assert res.status_code == 303
+        assert res.headers["location"].startswith("/login?next=")
+
+
+def test_admin_portal_routes_forbidden_for_regular_user(client: TestClient) -> None:
+    """Verify that normal non-admin users get HTTP 403 Forbidden on all /admin/* routes."""
+    db = SessionLocal()
+    normal_user = User(username="normal_player", is_admin=False, elo=1200)
+    normal_user.set_password("pass123")
+    db.add(normal_user)
+    db.commit()
+    user_id = normal_user.id
+    db.close()
+
+    token = "session_normal_user_test"
+    ACTIVE_SESSIONS[token] = user_id
+    client.cookies.set("session_token", token)
+
+    admin_routes = [
+        "/admin/dashboard",
+        "/admin/games",
+        "/admin/games/upload",
+        "/admin/tournaments",
+        "/admin/tournaments/1",
+        "/admin/users",
+    ]
+    for route in admin_routes:
+        res = client.get(route)
+        assert res.status_code == 403
+        assert "Administrative privileges required" in res.text
+
+
+def test_admin_portal_routes_success_for_admin_user(client: TestClient) -> None:
+    """Verify that admin user can successfully access all /admin/* subpages."""
+    from server.models import Game, Tournament
+    db = SessionLocal()
+    admin_user = User(username="site_admin", is_admin=True, elo=1500)
+    admin_user.set_password("admin_pass_999")
+    db.add(admin_user)
+    db.commit()
+
+    g = Game(slug="rps-chess", display_name="RPS Chess 9x9", is_active=True)
+    db.add(g)
+    db.commit()
+
+    t = Tournament(
+        game_id=g.id,
+        name="Giải Đấu Mùa Thu 2026",
+        status="open",
+        ffa_start_time="18:00",
+        ffa_end_time="20:00",
+        ffa_day_count=5,
+        bracket_top_n=8,
+    )
+    db.add(t)
+    db.commit()
+
+    admin_id = admin_user.id
+    t_id = t.id
+    db.close()
+
+    token = "admin_session_valid_portal"
+    ACTIVE_SESSIONS[token] = admin_id
+    client.cookies.set("session_token", token)
+
+    # 1. /admin/dashboard
+    res_dash = client.get("/admin/dashboard")
+    assert res_dash.status_code == 200
+    assert "Trung Tâm Quản Trị Hệ Thống" in res_dash.text or "Dashboard" in res_dash.text
+
+    # 2. /admin/games
+    res_games = client.get("/admin/games")
+    assert res_games.status_code == 200
+    assert "Danh Mục Bộ Môn Trò Chơi" in res_games.text or "RPS Chess 9x9" in res_games.text
+
+    # 3. /admin/games/upload
+    res_upload = client.get("/admin/games/upload")
+    assert res_upload.status_code == 200
+    assert "Tải Lên Plugin" in res_upload.text
+
+    # 4. /admin/tournaments
+    res_tourneys = client.get("/admin/tournaments")
+    assert res_tourneys.status_code == 200
+    assert "Quản Trị Danh Sách Giải Đấu" in res_tourneys.text or "Giải Đấu Mùa Thu 2026" in res_tourneys.text
+
+    # 5. /admin/tournaments/{id}
+    res_tourney_detail = client.get(f"/admin/tournaments/{t_id}")
+    assert res_tourney_detail.status_code == 200
+    assert "Giải Đấu Mùa Thu 2026" in res_tourney_detail.text
+    assert "admin_bracket.js" in res_tourney_detail.text
+
+    # 5b. Nonexistent tournament -> 404
+    res_tourney_404 = client.get("/admin/tournaments/99999")
+    assert res_tourney_404.status_code == 404
+
+    # 6. /admin/users
+    res_users = client.get("/admin/users")
+    assert res_users.status_code == 200
+    assert "Quản Lý Tài Khoản Người Dùng" in res_users.text
+    assert "site_admin" in res_users.text
+
+
+
 
 
 

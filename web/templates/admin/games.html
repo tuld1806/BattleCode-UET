@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}Quản lý Bộ môn Trò chơi - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="/admin/dashboard" style="color: var(--text-muted); font-size: 13px;">&larr; Bảng điều khiển</a>
+    </div>
+    <h1 class="page-title">🎮 Danh Mục Bộ Môn Trò Chơi</h1>
+    <div class="page-subtitle">Quản lý các plugin game đối kháng AI trên nền tảng</div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/admin/games/upload" class="btn btn-primary">
+      📤 Tải Lên Plugin Mới (.zip)
+    </a>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header flex-between">
+    <h2 class="card-title">Danh Sách Trò Chơi Đã Cài Đặt</h2>
+    <span class="badge">{{ games|length }} Game</span>
+  </div>
+
+  <div class="card-body">
+    {% if games %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th style="width: 60px;">ID</th>
+              <th>Tên trò chơi</th>
+              <th>Slug</th>
+              <th>Trạng thái</th>
+              <th>Ngày tạo</th>
+              <th style="text-align: right;">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for g in games %}
+              <tr>
+                <td>{{ g.id }}</td>
+                <td>
+                  <strong>{{ g.display_name }}</strong>
+                </td>
+                <td><code>{{ g.slug }}</code></td>
+                <td>
+                  {% if g.is_active %}
+                    <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">Hoạt động</span>
+                  {% else %}
+                    <span class="badge" style="background: rgba(218, 54, 51, 0.2); color: #f85149;">Đã ẩn</span>
+                  {% endif %}
+                </td>
+                <td style="font-size: 0.85rem; color: var(--text-muted);">
+                  {{ g.created_at.strftime('%d/%m/%Y') if g.created_at else '-' }}
+                </td>
+                <td style="text-align: right;">
+                  <a href="/games/{{ g.slug }}" class="btn btn-sm">Xem chi tiết</a>
+                  <button class="btn btn-sm" onclick="toggleGameActive({{ g.id }}, {{ 'false' if g.is_active else 'true' }})">
+                    {{ 'Ẩn' if g.is_active else 'Hiện' }}
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <p class="text-muted">Chưa có trò chơi nào được cài đặt trong hệ thống.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+async function toggleGameActive(gameId, targetState) {
+  try {
+    const res = await fetch(`/api/admin/games/${gameId}/toggle-active`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ is_active: targetState })
+    });
+    if (res.ok) {
+      window.location.reload();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      alert(data.detail || 'Không thể thay đổi trạng thái trò chơi.');
+    }
+  } catch (err) {
+    alert(`Lỗi kết nối: ${err.message}`);
+  }
+}
+</script>
+{% endblock %}

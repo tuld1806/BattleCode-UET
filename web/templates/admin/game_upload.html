@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Tải lên Plugin Trò chơi - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="/admin/games" style="color: var(--text-muted); font-size: 13px;">&larr; Danh mục trò chơi</a>
+    </div>
+    <h1 class="page-title">📤 Tải Lên Plugin Trò Chơi Mới (.zip)</h1>
+    <div class="page-subtitle">Đóng gói mã nguồn GameEngine và tệp cấu hình game.yaml thành file .zip chuẩn hóa</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 3fr 2fr; gap: 24px;">
+  <!-- Upload Box -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Biểu mẫu Tải lên Plugin</h2>
+    </div>
+
+    <form id="gameUploadForm" onsubmit="handleGameUpload(event)" style="padding-top: 12px;">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('gameZipInput').click()">
+        <div class="drop-icon">📦</div>
+        <div class="drop-text">Kéo thả file plugin .zip vào đây hoặc nhấp để chọn</div>
+        <div class="drop-sub">File nén chuẩn chứa <code>game.yaml</code> và <code>engine.py</code></div>
+        <div id="selectedFileName" style="margin-top: 10px; font-weight: 700; color: var(--accent);"></div>
+      </div>
+
+      <input type="file" id="gameZipInput" name="file" accept=".zip" style="display: none;" onchange="handleFileSelect(event)">
+
+      <div id="uploadStatus" style="margin-top: 14px; font-size: 13px; display: none; padding: 10px; border-radius: 6px;"></div>
+
+      <div style="margin-top: 20px;">
+        <button type="submit" id="btnUploadSubmit" class="btn btn-primary" style="width: 100%; padding: 10px;" disabled>
+          Kiểm tra AST &amp; Cài đặt Plugin
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Instruction Box -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">Quy Định Cấu Trúc Plugin .ZIP</h2>
+    </div>
+    <div style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+      <p>File .zip plugin hợp lệ bắt buộc phải có cấu trúc thư mục tối thiểu:</p>
+      <pre style="background: #0d1117; padding: 12px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; color: #58a6ff;">
+game_plugin.zip
+├── game.yaml         # Khai báo slug, display_name, board_size
+├── engine.py         # Kế thừa GameEngine (engine/base.py)
+└── rules.md          # Hướng dẫn chi tiết luật chơi
+      </pre>
+      <ul style="padding-left: 20px; margin-top: 12px;">
+        <li>Nghiêm cấm import các thư viện mạng hoặc thao tác filesystem trái phép (sẽ bị AST validator từ chối).</li>
+        <li>Hàm <code>create_initial_board()</code> và <code>apply_move()</code> phải tuân thủ trừu tượng của nền tảng.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedZip = null;
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) {
+    if (!file.name.endsWith('.zip')) {
+      alert('Vui lòng chọn file nén định dạng .zip');
+      return;
+    }
+    selectedZip = file;
+    document.getElementById('selectedFileName').textContent = `Đã chọn: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    document.getElementById('btnUploadSubmit').disabled = false;
+  }
+}
+
+async function handleGameUpload(e) {
+  e.preventDefault();
+  if (!selectedZip) return;
+
+  const btn = document.getElementById('btnUploadSubmit');
+  const statusEl = document.getElementById('uploadStatus');
+
+  btn.disabled = true;
+  btn.textContent = 'Đang phân tích AST & cài đặt...';
+  statusEl.style.display = 'block';
+  statusEl.style.background = 'rgba(88, 166, 255, 0.1)';
+  statusEl.style.color = '#58a6ff';
+  statusEl.textContent = 'Đang tải file lên máy chủ...';
+
+  const formData = new FormData();
+  formData.append('file', selectedZip);
+
+  try {
+    const res = await fetch('/api/admin/games/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok) {
+      statusEl.style.background = 'rgba(35, 134, 54, 0.2)';
+      statusEl.style.color = '#3fb950';
+      statusEl.textContent = `Thành công: Đã cài đặt plugin '${data.display_name || data.slug}'! Đang chuyển hướng...`;
+      setTimeout(() => { window.location.href = '/admin/games'; }, 1500);
+    } else {
+      statusEl.style.background = 'rgba(218, 54, 51, 0.2)';
+      statusEl.style.color = '#f85149';
+      statusEl.textContent = `Lỗi: ${data.detail || 'Cài đặt plugin thất bại.'}`;
+      btn.disabled = false;
+      btn.textContent = 'Kiểm tra AST & Cài đặt Plugin';
+    }
+  } catch (err) {
+    statusEl.style.background = 'rgba(218, 54, 51, 0.2)';
+    statusEl.style.color = '#f85149';
+    statusEl.textContent = `Lỗi kết nối: ${err.message}`;
+    btn.disabled = false;
+    btn.textContent = 'Kiểm tra AST & Cài đặt Plugin';
+  }
+}
+</script>
+{% endblock %}
