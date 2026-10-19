@@ -137,3 +137,87 @@ def test_admin_page_authenticated_admin_allowed():
     assert home_res.status_code == 200
     assert 'href="/admin"' in home_res.text
 
+
+def _get_admin_session_token_security(client: TestClient) -> None:
+    """Log in as the seeded admin and set session cookie on client."""
+    import os
+    init_db()
+    db = SessionLocal()
+    try:
+        admin = db.query(User).filter(User.is_admin == True).first()  # noqa: E712
+        assert admin, "No admin user found"
+        user_id = admin.id
+    finally:
+        db.close()
+    token = "admin_pw_gate_token"
+    ACTIVE_SESSIONS[token] = user_id
+    client.cookies.set("session_token", token)
+
+
+def test_generate_bracket_requires_password_success():
+    """Correct admin password on POST /api/admin/bracket/generate returns 200."""
+    import os
+    init_db()
+    client = TestClient(app)
+    _get_admin_session_token_security(client)
+
+    # Ensure at least 2 eligible non-admin users with bots exist
+    from server.models import Bot, Game as GameModel
+    db = SessionLocal()
+    try:
+        for i in range(4):
+            uname = f"bracket_pw_u{i}"
+            u = db.query(User).filter(User.username == uname).first()
+            if not u:
+                u = User(username=uname, is_admin=False, elo=1200 + i * 10)
+                u.set_password("pw")
+                db.add(u)
+                db.flush()
+                game = db.query(GameModel).first()
+                if game:
+                    b = Bot(
+                        user_id=u.id,
+                        game_id=game.id,
+                        filename=f"bot_pw_{i}.py",
+                        filepath=f"starter_kit/bot_template.py",
+                        is_active=True,
+                    )
+                    db.add(b)
+        db.commit()
+    finally:
+        db.close()
+
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    res = client.post(
+        "/api/admin/bracket/generate",
+        json={"admin_password": admin_password},
+    )
+    assert res.status_code == 200
+
+
+def test_generate_bracket_invalid_password_returns_403():
+    """Wrong admin password returns HTTP 403 and must not mutate DB state."""
+    init_db()
+    client = TestClient(app)
+    _get_admin_session_token_security(client)
+
+    res = client.post(
+        "/api/admin/bracket/generate",
+        json={"admin_password": "definitely_wrong_password_xyz"},
+    )
+    assert res.status_code == 403
+    detail = res.json().get("detail", "").lower()
+    assert "incorrect" in detail or "password" in detail or "mật khẩu" in detail
+
+
+def test_generate_bracket_missing_password_returns_422():
+    """Missing admin_password field returns HTTP 422 Unprocessable Entity."""
+    init_db()
+    client = TestClient(app)
+    _get_admin_session_token_security(client)
+
+    res = client.post(
+        "/api/admin/bracket/generate",
+        json={},
+    )
+    assert res.status_code == 422

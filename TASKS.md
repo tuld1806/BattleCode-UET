@@ -215,7 +215,7 @@
 
 ### Playoff Bracket Security, BO3 Execution & Excel Export
 
-> **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md`](docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md)  
+> **Kế hoạch chi tiết hợp nhất**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md)  
 > **Đặc tả thiết kế**: [`docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md`](docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md)
 
 - [ ] **Task BK1 (Security)**: Bổ sung xác thực mật khẩu Admin (`AdminConfirmPasswordPayload`) khi gọi `POST /api/admin/bracket/generate` và `/api/admin/tournaments/{id}/start-bracket`.

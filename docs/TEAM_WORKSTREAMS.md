@@ -104,7 +104,12 @@
 - [x] B12: `tests/test_admin_game_routes.py` — 5/5 test cases passed
 - [x] B13: Cập nhật `test_tournament.py`, `test_rating_history.py`
 - [x] B14: `pytest -v` xanh 100% (357/357 passed)
+- [ ] B15: Xác thực mật khẩu Admin khi tạo nhánh đấu (`POST /api/admin/bracket/generate`, `/api/admin/tournaments/{id}/start-bracket`)
+- [ ] B16: `server/bracket_runner.py` — Chạy trận đấu BO3 tự động, đổi bên luân phiên, đôn người thắng từ Tứ kết đến Chung kết
+- [ ] B17: `server/bracket_export.py` — Xuất bảng điểm tổng kết CSV tương thích Excel (UTF-8-SIG với BOM `\ufeff`)
+- [ ] B18: Kết nối 6 endpoints chạy giải và xuất CSV vào FastAPI router
 
+> **Kế hoạch thực hiện chi tiết**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md)
 
 ---
 

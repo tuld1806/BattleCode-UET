@@ -36,6 +36,11 @@ class UpdateSettingsRequest(BaseModel):
     turn_timeout_seconds: Optional[float] = Field(None, ge=0.1, le=10.0)
 
 
+class AdminConfirmPasswordPayload(BaseModel):
+    """Payload requiring admin password confirmation for sensitive operations."""
+    admin_password: str = Field(..., description="Current admin account password for confirmation.")
+
+
 def _get_setting_row(db: Session, key: str) -> TournamentSetting | None:
     """Retrieve setting row from database by key."""
     return db.query(TournamentSetting).filter(TournamentSetting.key == key).first()
@@ -175,10 +180,20 @@ def update_settings(
 
 @router.post("/bracket/generate")
 def trigger_bracket_generation(
+    payload: AdminConfirmPasswordPayload,
     current_admin: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ) -> List[Dict[str, Any]]:
-    """Seed and generate single-elimination tournament bracket for top participants."""
+    """Seed and generate single-elimination tournament bracket for top participants.
+
+    Requires the admin's current password in the request body as a second
+    confirmation step, preventing accidental or unauthorised bracket generation.
+    """
+    if not current_admin.verify_password(payload.admin_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Incorrect admin password. Bracket generation refused.",
+        )
     settings = _get_all_settings_dict(db)
     top_n = settings.get("top_players_count", 8)
 
