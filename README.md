@@ -1,6 +1,6 @@
-# Battlecode RPS Platform — 9x9 Rock-Paper-Scissors Algorithmic Arena
+# Battlecode Platform — Multi-Game Algorithmic Arena & Tournament Engine
 
-> Autonomous bot competition platform modeled after MIT Battlecode. Students engineer algorithmic agents in Python to contest 1v1 duels on an expanded 9x9 board with cyclic Rock-Paper-Scissors combat, competing in daily Free-For-All (FFA) rating ladders and single-elimination tournament playoffs.
+> Autonomous algorithmic competition platform modeled after MIT Battlecode. Students engineer algorithmic agents in Python to contest 1v1 duels across diverse turn-based game environments (featuring an expanded 9x9 Rock-Paper-Scissors Chess combat arena as the premier default game plugin), competing in daily Free-For-All (FFA) rating ladders and single-elimination Best-of-3 (BO3) playoff brackets.
 >
 > **Notice on Single Source of Truth (SSOT)**:  
 > The file **[`docs/CONTEXT_RESUME.md`](docs/CONTEXT_RESUME.md)** serves as the authoritative single source of truth governing system architecture, game rules, bot interface specifications, database schemas, and developer workflows. Refer to `docs/CONTEXT_RESUME.md` for foundational specifications.
@@ -22,8 +22,9 @@ python main.py
 ```
 
 The boot routine outputs active network endpoints:
-- **Local Web Interface**: [http://localhost:8000](http://localhost:8000)
+- **Multi-Game Lobby Portal**: [http://localhost:8000](http://localhost:8000) or [http://localhost:8000/lobby](http://localhost:8000/lobby)
 - **Local Area Network (LAN) URL**: `http://<LAN_IP>:8000` *(Share with other machines on the local Wi-Fi or wired network)*
+- **Game Detail & Leaderboards**: [http://localhost:8000/games/rps-chess](http://localhost:8000/games/rps-chess)
 - **Tournament Admin Dashboard**: [http://localhost:8000/admin](http://localhost:8000/admin) *(Default credentials: `admin` / `admin123`)*
 - **Interactive OpenAPI Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
@@ -37,8 +38,8 @@ To avoid information duplication and serve specific stakeholders, project docume
 | :--- | :--- | :--- |
 | **All Contributors & AI Agents** | [`docs/CONTEXT_RESUME.md`](docs/CONTEXT_RESUME.md) | **SSOT**: 9x9 rules, bot API signature, schemas, team roles, Continuous Feedback Loop law. |
 | **Competitors & Students** | [`docs/BOT_GUIDE.md`](docs/BOT_GUIDE.md) | **Bot Development Manual**: `a1`-`i9` coordinates, combat matrix, goal/wipeout logic, Minimax/heuristic design, offline CLI testing. |
-| **Tournament Administrators** | [`docs/ADMIN_GUIDE.md`](docs/ADMIN_GUIDE.md) | **Operations Guide**: Single-Admin invariant, LAN setup, schedule windows (`start_time`/`end_time`), boss deployment, playoff brackets. |
-| **Evaluators & System Engineers** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | **Technical Architecture**: Multi-tier engine, AST sandbox (74 patterns), isolated subprocess runner, SQLite WAL, CSS design tokens. |
+| **Tournament Administrators** | [`docs/ADMIN_GUIDE.md`](docs/ADMIN_GUIDE.md) | **Operations Guide**: Single-Admin invariant, LAN setup, schedule windows, boss deployment, BO3 playoff brackets, Excel score exports. |
+| **Evaluators & System Engineers** | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | **Technical Architecture**: Multi-game engine abstraction, AST sandbox, isolated runner, SQLite WAL, CSS design tokens. |
 | **Project Team Members** | [`TASKS.md`](TASKS.md) & [`GEMINI.md`](GEMINI.md) | High-level milestone tracking, Git worktree isolation rules, root repository preservation invariants. |
 
 ---
@@ -46,8 +47,8 @@ To avoid information duplication and serve specific stakeholders, project docume
 ## 3. Project Directory Structure
 
 ```text
-Battlecode-clone0810/
-├── main.py                      # Application launcher, LAN address discovery, admin seeder
+Battlecode-UET/
+├── main.py                      # Application launcher, LAN address discovery, admin and game seeder
 ├── requirements.txt             # Minimal dependencies (FastAPI, SQLAlchemy, PyYAML, pytest)
 ├── pytest.ini                   # Pytest test discovery configuration
 ├── TASKS.md                     # High-level project milestone delivery ledger
@@ -56,25 +57,38 @@ Battlecode-clone0810/
 ├── config/
 │   └── tournament.yaml          # Default tournament operational parameters
 │
-├── engine/                      # Core Game Logic (Pure Python, standalone execution)
-│   ├── game.py                  # 9x9 RPS chess engine, coordinates, victory conditions
-│   ├── runner.py                # Subprocess runner with 1.0s timeout and crash isolation
+├── engine/                      # Core Game Logic & Plugin Infrastructure
+│   ├── base.py                  # Abstract GameEngine interface for all game plugins
+│   ├── game.py                  # 9x9 RPS chess standalone mechanics and victory evaluation
+│   ├── plugin_loader.py         # Dynamic ZIP validation, ZipSlip defense, and AST security scan
+│   ├── runner.py                # Generic subprocess match runner with timeout and crash isolation
 │   └── sandbox.py               # AST static analysis validator (74 attack patterns)
 │
-├── server/                      # FastAPI Backend & Persistence
-│   ├── main.py                  # FastAPI routing, static assets, and template rendering
-│   ├── database.py              # SQLite engine with Write-Ahead Logging (WAL)
-│   ├── models.py                # Database models: User, Bot, Match, TournamentSetting, BracketMatch
-│   ├── queue.py                 # Asynchronous background match execution queue
-│   ├── tournament.py            # Elo calculation, schedule checks, bracket seeding
-│   ├── rating_history.py        # Rating history and Elo trajectory reconstruction service
-│   ├── boss_manager.py          # Server boss deployment lifecycle and accounts
-│   ├── bosses/                  # Benchmark boss bots: novice, rusher, sentinel, tactician, apex
-│   └── routes/                  # REST API endpoints (auth, bots, matches, leaderboard, admin)
+├── games/                       # Packaged Game Plugins Catalog
+│   ├── rps_chess/               # Default RPS Chess 9x9 plugin
+│   │   ├── config.yaml          # Plugin manifest: dimensions, turn limits, rules breakdown
+│   │   ├── engine.py            # RPSChessEngine implementing GameEngine
+│   │   └── bosses/              # 5 benchmark boss bots (novice, rusher, sentinel, tactician, apex)
+│   └── sample-game/             # Reference plugin skeleton for third-party game authors
 │
-├── web/                         # Frontend presentation layer (Zero-Node.js)
-│   ├── static/                  # CSS tokens, replay visualizer.js, and rating_chart.js
-│   └── templates/               # Jinja2 templates (Leaderboard, Profile, Replay, Admin, Bracket)
+├── server/                      # FastAPI Backend & Persistence
+│   ├── main.py                  # FastAPI routing, lobby, game details, and replay pages
+│   ├── database.py              # SQLite engine with WAL mode and automatic game seeding
+│   ├── models.py                # Database models: User, Game, GameProfile, Bot, Match, Tournament, TournamentEnrollment, BracketMatch
+│   ├── queue.py                 # Asynchronous background match execution queue
+│   ├── tournament.py            # Per-game Elo calculation, dynamic schedule, and bracket seeding
+│   ├── rating_history.py        # Rating trajectory reconstruction service
+│   ├── game_registry.py         # Singleton dynamic GameEngine loader and in-memory cache
+│   ├── bracket_runner.py        # Automated Best-of-3 playoff series runner and winner promotion
+│   ├── bracket_export.py        # Excel UTF-8-SIG CSV score export service
+│   ├── boss_manager.py          # Server boss deployment lifecycle and accounts
+│   ├── bosses/                  # Benchmark boss bot scripts
+│   └── routes/                  # REST API routers (auth, bots, matches, leaderboard, admin, games, admin_games, admin_tournaments)
+│
+├── web/                         # Frontend Presentation Layer (Zero-Node.js)
+│   ├── static/                  # CSS tokens, visualizer.js, rating_chart.js, admin_bracket.js
+│   └── templates/               # Jinja2 templates (lobby, game_detail, tournament_detail, game_profile, replay)
+│       └── admin/               # Dedicated admin portal views (dashboard, games, game_upload, tournaments, tournament_detail, users)
 │
 ├── starter_kit/                 # Offline development bundle for competitors
 │   ├── bot_template.py          # Baseline bot skeleton
@@ -89,7 +103,7 @@ Battlecode-clone0810/
 │   ├── ADMIN_GUIDE.md           # Tournament administration operations manual
 │   └── superpowers/             # Architecture specifications and implementation plans
 │
-└── tests/                       # Comprehensive automated test suite
+└── tests/                       # Automated test suite (Unit, Integration, and E2E)
 ```
 
 ---
@@ -97,43 +111,37 @@ Battlecode-clone0810/
 ## 4. Frequently Asked Questions (FAQ)
 
 ### Q1: How do competitors connect from other computers on the local network?
-The server listens on `0.0.0.0:8000`. Upon launching `python main.py`, the terminal banner displays the active **LAN Network URL** (e.g. `http://192.168.1.15:8000`). Other computers connected to the same Wi-Fi or wired network access this address in any standard browser. If access is blocked, consult the firewall troubleshooting instructions in [`docs/ADMIN_GUIDE.md`](docs/ADMIN_GUIDE.md).
+The server listens on `0.0.0.0:8000`. Upon launching `python main.py`, the terminal banner displays the active **LAN Network URL** (e.g. `http://192.168.1.15:8000`). Other computers connected to the same Wi-Fi or wired network access this address in standard modern web browsers.
 
-### Q2: Is submitted bot source code visible to opposing competitors?
+### Q2: How does the Multi-Game Platform architecture work?
+All game logic is decoupled from server infrastructure via `engine.base.GameEngine`. Each game is stored as a plugin in `games/<slug>/` containing `config.yaml` and `engine.py`. Player Elo ratings, win/loss records, and tournament enrollments are strictly scoped to specific games through `GameProfile` and `TournamentEnrollment` entities.
+
+### Q3: How can developers build and upload a new game plugin?
+1. Subclass `engine.base.GameEngine` and implement the 7 required methods (`create_initial_state`, `get_valid_moves`, `apply_move`, `check_game_over`, `get_player_view`, `get_render_spec`, `validate_move`).
+2. Provide a valid `config.yaml` specifying game metadata, board dimensions, and time limits.
+3. Package the plugin folder into a standard `.zip` file.
+4. Administrators upload the `.zip` archive via the web admin portal (`/admin/games/upload`), which automatically verifies ZipSlip defense and runs AST security scans before runtime mounting.
+
+### Q4: How is playoff bracket execution and score export handled?
+Administrators trigger bracket creation with password confirmation (`AdminConfirmPasswordPayload`), seeding Top N candidates ordered by GameProfile Elo. The automated playoff runner (`server/bracket_runner.py`) executes Best-of-3 (BO3) series with alternating player colors, supports walkovers, records game replays, and advances winners through to the championship. Administrators can export the finalized standings to an Excel-compatible CSV file encoded with UTF-8 BOM (`\ufeff`) via one click.
+
+### Q5: Is submitted bot source code visible to opposing competitors?
 **No.** All competitor code is stored securely in the private server directory (`bots/`). Opponents only receive standardized match replay JSON logs detailing turn coordinates and SAN annotations; source files are never accessible.
 
-### Q3: How is administrator access controlled? Can other users become administrators?
-The system enforces the **Single-Admin Invariant**:
-- Exactly one administrator exists across the persistence layer.
-- Credentials are configured via environment variables `ADMIN_USERNAME` and `ADMIN_PASSWORD` (default: `admin` / `admin123`).
-- Registration attempts matching the admin name are rejected with HTTP 400.
-- Application startup demotes any unauthorized admin flag (`is_admin = False`).
-- The `/admin` web portal enforces HTTP 303 redirection for unauthenticated visitors and HTTP 403 Forbidden for non-admin accounts.
-
-### Q4: Under what conditions does a bot incur a technical forfeit?
+### Q6: Under what conditions does a bot incur a technical forfeit?
 A bot instantly forfeits a match if it:
 1. Exceeds the **1.0-second** per-turn calculation timeout (`win_reason = 'timeout'`).
 2. Triggers an unhandled runtime exception or crash (`win_reason = 'error'`).
 3. Emits an illegal move or malformed coordinate structure (`win_reason = 'invalid_move'`).
 
-### Q5: Can competitors test bots offline without connecting to the server?
-**Yes.** Competitors can download the [`starter_kit/`](starter_kit/) directory and run:
-```bash
-python starter_kit/local_arena.py my_bot.py starter_kit/heuristic_bot.py --rounds 10
-```
-This utility executes locally without external networking or server configuration. See [`docs/BOT_GUIDE.md`](docs/BOT_GUIDE.md).
-
-### Q6: How does dynamic tournament scheduling operate?
-Administrators configure matchmaking operational modes (`auto`, `true`, `false`) and daily operating windows (`start_time` and `end_time`, such as `19:00` to `21:00`) directly from the web Admin Dashboard. The system also supports overnight windows and custom daily Elo multipliers $x \in [1.0, 3.0]$.
-
 ---
 
 ## 5. Automated Verification
 
-Run the full automated test suite covering game engine mechanics, AST sandboxing, runner isolation, database operations, Elo calibration, REST APIs, UI templates, LAN discovery, and administrator authorization:
+Run the full automated test suite covering game engine mechanics, AST sandboxing, runner isolation, database operations, Elo calibration, REST APIs, UI templates, LAN discovery, multi-game tournament workflows, and playoff execution:
 
 ```bash
 pytest -v
 ```
 
-All test cases execute locally in seconds, verifying system integrity before deployment.
+All test cases execute locally in seconds, verifying 100% system integrity before deployment.

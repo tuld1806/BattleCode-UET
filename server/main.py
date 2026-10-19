@@ -439,7 +439,7 @@ def user_game_profile_page(
 
 @app.get("/replay/{match_id}", response_class=HTMLResponse, tags=["web"])
 def replay_page(
-    match_id: int,
+    match_id: str,
     request: Request,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:

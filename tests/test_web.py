@@ -723,6 +723,53 @@ def test_user_profile_by_id_page_renders_profile(client: TestClient) -> None:
     assert "1550" in res.text
 
 
+def test_bracket_replay_page_returns_200_for_string_identifier(client: TestClient) -> None:
+    """Verify that /replay/{match_id} accepts string identifiers such as bracket_1_game_1."""
+    res = client.get("/replay/bracket_1_game_1")
+    assert res.status_code == 200
+    assert "text/html" in res.headers["content-type"]
+    assert "bracket_1_game_1" in res.text
+    assert "visualizer.js" in res.text
+    assert 'const matchId = "bracket_1_game_1";' in res.text
+
+
+def test_bracket_replay_api_endpoint_returns_json_for_bracket_match(client: TestClient) -> None:
+    """Verify that /api/matches/{match_id}/replay reads directly from replays/ directory for bracket matches."""
+    import json
+    from pathlib import Path
+
+    replays_dir = Path("replays")
+    replays_dir.mkdir(parents=True, exist_ok=True)
+    sample_file = replays_dir / "bracket_99_game_1.json"
+    dummy_payload = {
+        "winner": 1,
+        "win_reason": "goal",
+        "total_turns": 15,
+        "player1": {"id": 10, "username": "alpha_contender"},
+        "player2": {"id": 11, "username": "beta_contender"},
+        "initial_board": [],
+        "moves": [],
+    }
+    sample_file.write_text(json.dumps(dummy_payload), encoding="utf-8")
+
+    try:
+        res = client.get("/api/matches/bracket_99_game_1/replay")
+        assert res.status_code == 200
+        data = res.json()
+        assert data["winner"] == 1
+        assert data["player1"]["username"] == "alpha_contender"
+
+        res_detail = client.get("/api/matches/bracket_99_game_1")
+        assert res_detail.status_code == 200
+        detail = res_detail.json()
+        assert detail["id"] == "bracket_99_game_1"
+        assert detail["player1"]["username"] == "alpha_contender"
+    finally:
+        if sample_file.exists():
+            sample_file.unlink()
+
+
+
 
 
 

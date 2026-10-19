@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from typing import Any, Dict, List, Optional
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from engine.sandbox import validate_bot_source
 from server.database import get_db
-from server.models import Bot, User
+from server.models import Bot, Game, User
 from server.routes.auth import get_current_user
 
 router = APIRouter(prefix="/bots", tags=["bots"])
@@ -19,6 +20,7 @@ router = APIRouter(prefix="/bots", tags=["bots"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_bot(
     file: UploadFile = File(...),
+    game_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -68,15 +70,22 @@ async def upload_bot(
     target_path = bots_dir / target_filename
     target_path.write_text(source_code, encoding="utf-8")
 
-    # Deactivate existing active bots for this user
+    target_game_id = game_id
+    if target_game_id is None:
+        default_game = db.query(Game).filter(Game.is_active == True).order_by(Game.id.asc()).first()  # noqa: E712
+        target_game_id = default_game.id if default_game else 1
+
+    # Deactivate existing active bots for this user on this game
     db.query(Bot).filter(
         Bot.user_id == current_user.id,
+        or_(Bot.game_id == target_game_id, Bot.game_id == None),  # noqa: E711
         Bot.is_active == True,  # noqa: E712
     ).update({"is_active": False})
 
     # Create new active Bot record
     new_bot = Bot(
         user_id=current_user.id,
+        game_id=target_game_id,
         filename=raw_filename,
         filepath=str(target_path),
         is_active=True,

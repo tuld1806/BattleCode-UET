@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from server.database import get_db
@@ -155,7 +156,7 @@ def enroll_in_tournament(
     # 3. Check for active bot for this game
     active_bot = db.query(Bot).filter(
         Bot.user_id == current_user.id,
-        Bot.game_id == game.id,
+        or_(Bot.game_id == game.id, Bot.game_id == None),  # noqa: E711
         Bot.is_active == True,  # noqa: E712
     ).first()
 

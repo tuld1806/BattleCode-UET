@@ -169,39 +169,76 @@ def list_matches(
 
 @router.get("/{match_id}")
 def get_match_detail(
-    match_id: int,
+    match_id: str,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Retrieve match execution details and outcome statistics by match ID."""
-    match = db.query(Match).filter(Match.id == match_id).first()
-    if not match:
+    """Retrieve match execution details and outcome statistics by match ID or identifier."""
+    if match_id.isdigit():
+        match = db.query(Match).filter(Match.id == int(match_id)).first()
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found.",
+            )
+        return _serialize_match(match)
+
+    # Check for direct bracket replay file
+    safe_name = Path(match_id).name
+    replay_file = Path("replays") / (safe_name if safe_name.endswith(".json") else f"{safe_name}.json")
+    if not replay_file.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Match not found.",
         )
-    return _serialize_match(match)
+
+    try:
+        data = json.loads(replay_file.read_text(encoding="utf-8"))
+        p1 = data.get("player1") or {}
+        p2 = data.get("player2") or {}
+        return {
+            "id": match_id,
+            "player1_id": p1.get("id"),
+            "player2_id": p2.get("id"),
+            "player1": p1,
+            "player2": p2,
+            "winner_id": data.get("winner"),
+            "win_reason": data.get("win_reason"),
+            "total_turns": data.get("total_turns", len(data.get("moves", []))),
+            "replay_path": str(replay_file),
+            "is_bracket": True,
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to read match details: {exc}",
+        )
 
 
 @router.get("/{match_id}/replay")
 def get_match_replay(
-    match_id: int,
+    match_id: str,
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Retrieve full replay JSON data for visualization."""
-    match = db.query(Match).filter(Match.id == match_id).first()
-    if not match:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Match not found.",
-        )
+    if match_id.isdigit():
+        match = db.query(Match).filter(Match.id == int(match_id)).first()
+        if not match:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Match not found.",
+            )
 
-    if not match.replay_path:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Replay is not yet available or match is still running.",
-        )
+        if not match.replay_path:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Replay is not yet available or match is still running.",
+            )
 
-    replay_path = Path(match.replay_path)
+        replay_path = Path(match.replay_path)
+    else:
+        safe_name = Path(match_id).name
+        replay_path = Path("replays") / (safe_name if safe_name.endswith(".json") else f"{safe_name}.json")
+
     if not replay_path.is_file():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

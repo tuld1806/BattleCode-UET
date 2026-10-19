@@ -1,6 +1,6 @@
 # Kế Hoạch Thực Hiện & Theo Dõi Tiến Độ Dự Án (TASKS.md)
 
-> **Trạng thái**: Hoàn thành toàn diện và toàn bộ test pass (380/380 tests pass).
+> **Trạng thái**: Hoàn thành toàn diện và toàn bộ test pass (383/383 tests pass).
 > - Quy tắc: Đã kiểm chứng tự động toàn diện qua Subagent-Driven Development, 6-domain Deep Testing Matrix, Boss Arena Benchmark Simulation, và Unit/Integration/E2E test suite.
 
 ---
@@ -229,12 +229,13 @@
 
 
 - [ ] **Task 11.1**: Merge theo thứ tự: Track A → Track B → Track C → `main`.
-  - *Verification*: `pytest -v` xanh 100% trên `main` sau mỗi merge.
-- [ ] **Task 11.2**: Manual smoke test toàn bộ luồng: Lobby → Game Detail → Tournament Enroll → FFA match → Elo cập nhật trong GameProfile → Xem replay.
-  - *Verification*: Tất cả bước thực hiện được không có lỗi.
-- [ ] **Task 11.3**: Đồng bộ `docs/CONTEXT_RESUME.md` — Cập nhật kiến trúc multi-game, schema mới, routes mới.
+  - *Verification*: Nhánh `v2` đã hoàn tất 100% (383/383 tests PASS), sẵn sàng cho merge cuối cùng vào `main`.
+- [x] **Task 11.2**: Manual smoke test và E2E test toàn bộ luồng: Lobby → Game Detail → Tournament Enroll → FFA match → Elo cập nhật trong GameProfile → Xác thực mật khẩu tạo Bracket → BO3 Playoff Runner → Replay Web & API → Xuất điểm Excel (UTF-8-SIG).
+  - *Verification*: Chạy `pytest tests/test_e2e_multi_game.py` -> 1/1 PASS (Toàn bộ chu trình vận hành trơn tru).
+- [x] **Task 11.3**: Đồng bộ `docs/CONTEXT_RESUME.md` — Cập nhật kiến trúc multi-game, schema mới, routes mới.
   - *Verification*: `pytest tests/test_documentation_integrity.py` PASS.
-- [ ] **Task 11.4**: Cập nhật `README.md` — Cấu trúc thư mục mới, hướng dẫn upload game plugin.
+- [x] **Task 11.4**: Cập nhật `README.md` — Cấu trúc thư mục mới, hướng dẫn upload game plugin, Playoff BO3 và Excel CSV export.
+  - *Verification*: `pytest tests/test_documentation_integrity.py` PASS.
 
 - *Liên kết chi tiết Spec và Plan*:
   - Spec: [`docs/superpowers/specs/2026-10-16-multi-game-platform-design.md`](docs/superpowers/specs/2026-10-16-multi-game-platform-design.md)
