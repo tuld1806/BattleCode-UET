@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Hồ Sơ {{ game.display_name }} — {{ target_user.username }}{% endblock %}
+
+{% block content %}
+<div class="game-profile-container">
+  <!-- Top Navigation & Breadcrumb -->
+  <div style="margin-bottom: 20px;">
+    <a href="/profile{% if current_user and current_user.id != target_user.id %}/{{ target_user.id }}{% endif %}" style="color: var(--text-muted); font-size: 13px; text-decoration: none;">
+      &larr; Quay lại trang cá nhân của {{ target_user.username }}
+    </a>
+  </div>
+
+  <!-- Header Card: User & Game Identity -->
+  <div class="card" style="margin-bottom: 24px; padding: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <div style="width: 56px; height: 56px; border-radius: 12px; background: rgba(88, 166, 255, 0.15); border: 1px solid rgba(88, 166, 255, 0.3); display: flex; align-items: center; justify-content: center; font-size: 28px;">
+          {% if 'chess' in game.slug %}⚔️{% elif 'tic' in game.slug %}⭕{% else %}🕹️{% endif %}
+        </div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px;">
+            <h1 style="font-size: 1.5rem; font-weight: 700; margin: 0; color: var(--text-primary);">
+              {{ target_user.username }}
+            </h1>
+            <span class="game-slug-tag" style="font-size: 0.78rem; font-family: var(--font-mono); color: var(--accent); background: rgba(88, 166, 255, 0.1); padding: 2px 8px; border-radius: 4px;">
+              {{ game.slug }}
+            </span>
+          </div>
+          <div style="color: var(--text-muted); font-size: 0.9rem;">
+            Thành tích thi đấu bộ môn <strong>{{ game.display_name }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div style="display: flex; gap: 10px;">
+        <a href="/games/{{ game.slug }}" class="btn btn-sm">
+          🏆 Bảng xếp hạng bộ môn
+        </a>
+        <a href="/lobby" class="btn btn-sm">
+          🎮 Sảnh game
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Metrics Grid -->
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="padding: 16px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Điểm Elo Bộ Môn</div>
+      <div style="font-size: 2rem; font-weight: 800; color: var(--accent); margin-top: 4px;" id="game-profile-elo">
+        {{ profile.elo if profile else 1200 }}
+      </div>
+    </div>
+
+    <div class="card" style="padding: 16px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Tổng Số Trận</div>
+      <div style="font-size: 2rem; font-weight: 800; color: var(--text-primary); margin-top: 4px;">
+        {{ total_matches }}
+      </div>
+    </div>
+
+    <div class="card" style="padding: 16px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Chiến Thắng (W)</div>
+      <div style="font-size: 2rem; font-weight: 800; color: #3fb950; margin-top: 4px;">
+        {{ profile.wins if profile else 0 }}
+      </div>
+    </div>
+
+    <div class="card" style="padding: 16px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Thất Bại (L)</div>
+      <div style="font-size: 2rem; font-weight: 800; color: #f85149; margin-top: 4px;">
+        {{ profile.losses if profile else 0 }}
+      </div>
+    </div>
+
+    <div class="card" style="padding: 16px; text-align: center;">
+      <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Tỷ Lệ Thắng</div>
+      <div style="font-size: 2rem; font-weight: 800; color: #e3b341; margin-top: 4px;">
+        {{ win_rate }}%
+      </div>
+    </div>
+  </div>
+
+  <!-- Elo Trajectory Chart Card -->
+  <div class="card" style="margin-bottom: 24px;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 class="card-title">Quỹ Đạo Biến Động Elo — {{ game.display_name }}</h2>
+      <span style="font-size: 12px; color: var(--text-muted);">Cập nhật tự động sau mỗi trận</span>
+    </div>
+    <div class="card-body" style="padding: 20px;">
+      <div id="user-game-rating-chart" style="width: 100%; min-height: 280px; position: relative;"></div>
+    </div>
+  </div>
+
+  <!-- Match History Table Card -->
+  <div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+      <h2 class="card-title">Lịch Sử Trận Đấu ({{ game.display_name }})</h2>
+      <span style="font-size: 12px; color: var(--text-muted);">{{ game_matches|length }} trận gần nhất</span>
+    </div>
+
+    <div class="card-body" style="padding: 0;">
+      {% if game_matches %}
+        <div class="table-responsive">
+          <table class="table" style="margin: 0; font-size: 13px;">
+            <thead>
+              <tr>
+                <th style="width: 70px;">ID</th>
+                <th>Đối thủ</th>
+                <th style="text-align: center; width: 110px;">Kết quả</th>
+                <th style="text-align: right; width: 150px;">Biến động Elo</th>
+                <th>Lý do</th>
+                <th style="text-align: center; width: 80px;">Số lượt</th>
+                <th style="text-align: center; width: 110px;">Chi tiết</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for m in game_matches %}
+                {% set is_p1 = (m.player1_id == target_user.id) %}
+                {% set opponent = m.player2 if is_p1 else m.player1 %}
+                {% set my_elo_before = m.p1_elo_before if is_p1 else m.p2_elo_before %}
+                {% set my_elo_after = m.p1_elo_after if is_p1 else m.p2_elo_after %}
+                {% set won = (m.winner_id == target_user.id) %}
+                {% set is_draw = (m.winner_id is none and m.win_reason == 'draw') %}
+                <tr>
+                  <td style="color: var(--text-muted);">#{{ m.id }}</td>
+                  <td>
+                    <strong>{{ opponent.username if opponent else 'Unknown' }}</strong>
+                  </td>
+                  <td style="text-align: center;">
+                    {% if won %}
+                      <span class="badge" style="background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3);">
+                        Thắng
+                      </span>
+                    {% elif is_draw %}
+                      <span class="badge" style="background: rgba(139, 148, 158, 0.15); color: var(--text-muted); border: 1px solid var(--border-subtle);">
+                        Hòa
+                      </span>
+                    {% else %}
+                      <span class="badge" style="background: rgba(248, 81, 73, 0.15); color: #f85149; border: 1px solid rgba(248, 81, 73, 0.3);">
+                        Thua
+                      </span>
+                    {% endif %}
+                  </td>
+                  <td style="text-align: right; font-family: var(--font-mono);">
+                    {% if my_elo_before is not none and my_elo_after is not none %}
+                      <span style="color: var(--text-muted);">{{ my_elo_before }}</span>
+                      &rarr;
+                      <strong style="color: {% if my_elo_after > my_elo_before %}#3fb950{% elif my_elo_after < my_elo_before %}#f85149{% else %}var(--text-muted){% endif %};">
+                        {{ my_elo_after }}
+                      </strong>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td style="color: var(--text-muted);">{{ m.win_reason or '-' }}</td>
+                  <td style="text-align: center; color: var(--text-muted);">{{ m.total_turns or 0 }}</td>
+                  <td style="text-align: center;">
+                    {% if m.replay_path %}
+                      <a href="/replay?match_id={{ m.id }}" class="btn btn-sm btn-outline" style="padding: 2px 8px; font-size: 12px;">
+                        Replay
+                      </a>
+                    {% else %}
+                      <span style="color: var(--text-muted);">-</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+          <div style="font-size: 32px; margin-bottom: 8px;">🎮</div>
+          <p>Chưa có trận đấu nào được ghi nhận cho bộ môn này.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+.game-profile-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/rating_chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var chartContainer = document.getElementById('user-game-rating-chart');
+    if (chartContainer && window.RatingChart) {
+      var userId = {{ target_user.id }};
+      var gameSlug = {{ game.slug | tojson }};
+      window.RatingChart.fetchAndRender('user-game-rating-chart', userId, gameSlug, {
+        height: 280,
+        title: 'Lịch sử Elo ' + {{ game.display_name | tojson }}
+      });
+    }
+  });
+</script>
+{% endblock %}

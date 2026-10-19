@@ -1,6 +1,6 @@
 # Kế Hoạch Thực Hiện & Theo Dõi Tiến Độ Dự Án (TASKS.md)
 
-> **Trạng thái**: Hoàn thành toàn diện và toàn bộ test pass (316/316 tests pass).
+> **Trạng thái**: Hoàn thành toàn diện và toàn bộ test pass (380/380 tests pass).
 > - Quy tắc: Đã kiểm chứng tự động toàn diện qua Subagent-Driven Development, 6-domain Deep Testing Matrix, Boss Arena Benchmark Simulation, và Unit/Integration/E2E test suite.
 
 ---
@@ -157,7 +157,7 @@
 
 ## Milestone 11: Multi-Game Tournament Platform Redesign (Triển Khai Song Song 3 Track)
 
-> **Trạng thái**: Đang triển khai.
+> **Trạng thái**: Track A, Track B, Track C và Playoff Bracket đã hoàn thành 100% (380/380 tests PASS). Sẵn sàng cho Integration.
 > **Phân công chi tiết**: [`docs/TEAM_WORKSTREAMS.md`](docs/TEAM_WORKSTREAMS.md)
 > **Spec kiến trúc**: [`docs/superpowers/specs/2026-10-16-multi-game-platform-design.md`](docs/superpowers/specs/2026-10-16-multi-game-platform-design.md)
 
@@ -198,24 +198,24 @@
 
 ### Track C: Frontend & Templates (Phụ trách: Member C)
 
-- [x] **Task C1**: Tạo `web/templates/lobby.html` — Trang chủ mới: grid game cards, fetch `GET /api/games`.
-  - *Verification*: `pytest tests/test_web.py -k test_lobby` -> PASS.
-- [x] **Task C2**: Tạo `web/templates/game_detail.html` — 3 tabs: luật chơi, leaderboard (per-game Elo), danh sách tournament + nút Enroll.
-  - *Verification*: `pytest tests/test_web.py -k test_game_detail` -> PASS.
-- [x] **Task C3**: Tạo `web/templates/tournament_detail.html` — Enrolled list, FFA countdown, bracket view.
-  - *Verification*: `pytest tests/test_web.py -k test_public_tournament_detail` -> PASS.
-- [x] **Task C4**: Tạo `web/templates/admin/` subdirectory với 6 file: `dashboard.html`, `games.html`, `game_upload.html`, `tournaments.html`, `tournament_detail.html`, `users.html`.
-  - *Verification*: `pytest tests/test_web.py -k "admin_portal"` -> PASS. Tất cả route `/admin/*` trả về 200 khi đăng nhập admin, 403 khi không phải admin, 303 redirect khi chưa login.
-- [x] **Task C5**: Cập nhật `web/templates/profile.html` — Hiện GameProfile card theo từng game thay vì 1 Elo duy nhất.
-  - *Verification*: `pytest tests/test_web.py -k test_profile_game_cards` -> PASS. Profile người chơi hiện đúng Elo per-game.
+- [x] **Task C1**: Tạo `web/templates/lobby.html` — Trang chủ mới: grid game cards, fetch `/lobby` hiển thị danh mục game và leaderboard FFA.
+  - *Verification*: `pytest tests/test_web.py::test_lobby_page_returns_200_and_renders_game_cards` -> PASS.
+- [x] **Task C2**: Tạo `web/templates/game_detail.html` — 3 tabs: luật chơi & spec bot, leaderboard (per-game Elo), danh sách tournament + nút Ghi danh.
+  - *Verification*: `pytest tests/test_web.py::test_game_detail_page_3_tabs` -> PASS.
+- [x] **Task C3**: Tạo `web/templates/tournament_detail.html` — Enrolled list, FFA live countdown, bracket view, nút enroll/unenroll client-side.
+  - *Verification*: `pytest tests/test_web.py::test_public_tournament_detail` -> PASS.
+- [x] **Task C4**: Tạo `web/templates/admin/` subdirectory với các view quản trị: `dashboard.html`, `games.html`, `game_upload.html`, `tournaments.html`, `tournament_detail.html`, `users.html`.
+  - *Verification*: `pytest tests/test_web.py` -> PASS. Tất cả route `/admin/*` trả về 200 khi đăng nhập admin, 403 khi không phải admin, 303 redirect khi chưa login.
+- [x] **Task C5**: Cập nhật `web/templates/profile.html` — Hiện GameProfile card theo từng game thay vì 1 Elo duy nhất. Tạo `web/templates/game_profile.html`.
+  - *Verification*: `pytest tests/test_web.py::test_user_game_profile_page_renders_stats_and_chart` -> PASS. Profile người chơi hiện đúng Elo per-game và có trang chi tiết bộ môn.
 - [x] **Task C6**: Cập nhật `web/templates/base.html` và `web/static/js/rating_chart.js`.
-  - *Verification*: Navbar link về Lobby, chart nhận `game_slug` param hoạt động đúng.
+  - *Verification*: Navbar link về Lobby (Sảnh Đấu), chart tương thích đa bộ môn với tham số `game_slug`.
 - [x] **Task C7**: Cập nhật `tests/test_web.py` — Thêm route test cho tất cả trang mới.
-  - *Verification*: `pytest tests/test_web.py` -> 25/25 PASS.
+  - *Verification*: `pytest tests/test_web.py` -> 28/28 tests PASS (Full suite 380/380 PASS).
 
 ### Playoff Bracket Security, BO3 Execution & Excel Export
 
-> **Kế hoạch chi tiết hợp nhất**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md)  
+> **Kế hoạch chi tiết**: [`docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md`](docs/superpowers/plans/2026-10-18-bracket-execution-and-excel-export.md)  
 > **Đặc tả thiết kế**: [`docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md`](docs/superpowers/specs/2026-10-18-bracket-execution-and-excel-export-design.md)
 
 - [x] **Task BK1 (Security)**: Bổ sung xác thực mật khẩu Admin (`AdminConfirmPasswordPayload`) khi gọi `POST /api/admin/bracket/generate` và `/api/admin/tournaments/{id}/start-bracket`.
@@ -227,13 +227,14 @@
 
 ### Integration (Cả Nhóm — Ngày cuối)
 
-- [x] **Task 11.1**: Merge theo thứ tự: Track A → Track B → Track C → `v2`.
-  - *Verification*: `python -m pytest -v` xanh 100% (377/377 PASS).
-- [x] **Task 11.2**: Smoke test toàn bộ luồng: Lobby → Game Detail → Tournament Enroll → FFA match → Elo cập nhật trong GameProfile → Xem replay.
-  - *Verification*: Tất cả luồng thực hiện ổn định và có automated integration test bao phủ.
-- [x] **Task 11.3**: Đồng bộ `docs/CONTEXT_RESUME.md` — Cập nhật kiến trúc multi-game, schema mới, routes mới.
+
+- [ ] **Task 11.1**: Merge theo thứ tự: Track A → Track B → Track C → `main`.
+  - *Verification*: `pytest -v` xanh 100% trên `main` sau mỗi merge.
+- [ ] **Task 11.2**: Manual smoke test toàn bộ luồng: Lobby → Game Detail → Tournament Enroll → FFA match → Elo cập nhật trong GameProfile → Xem replay.
+  - *Verification*: Tất cả bước thực hiện được không có lỗi.
+- [ ] **Task 11.3**: Đồng bộ `docs/CONTEXT_RESUME.md` — Cập nhật kiến trúc multi-game, schema mới, routes mới.
   - *Verification*: `pytest tests/test_documentation_integrity.py` PASS.
-- [x] **Task 11.4**: Cập nhật `README.md` — Cấu trúc thư mục mới, hướng dẫn upload game plugin.
+- [ ] **Task 11.4**: Cập nhật `README.md` — Cấu trúc thư mục mới, hướng dẫn upload game plugin.
 
 - *Liên kết chi tiết Spec và Plan*:
   - Spec: [`docs/superpowers/specs/2026-10-16-multi-game-platform-design.md`](docs/superpowers/specs/2026-10-16-multi-game-platform-design.md)

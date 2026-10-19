@@ -332,6 +332,111 @@ def profile_page(
     )
 
 
+@app.get("/profile/{user_id}", response_class=HTMLResponse, tags=["web"])
+def user_profile_by_id_page(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render a specific user's profile viewable by other players."""
+    current_user = _get_optional_user(request, db)
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found.",
+        )
+
+    user_bots = (
+        db.query(Bot)
+        .filter(Bot.user_id == target_user.id)
+        .order_by(Bot.uploaded_at.desc())
+        .all()
+    )
+    user_matches = (
+        db.query(Match)
+        .filter(or_(Match.player1_id == target_user.id, Match.player2_id == target_user.id))
+        .order_by(Match.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    game_profiles = (
+        db.query(GameProfile)
+        .filter(GameProfile.user_id == target_user.id)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="profile.html",
+        context={
+            "current_user": current_user,
+            "target_user": target_user,
+            "user_bots": user_bots,
+            "user_matches": user_matches,
+            "game_profiles": game_profiles,
+        },
+    )
+
+
+@app.get("/profile/{user_id}/games/{game_slug}", response_class=HTMLResponse, tags=["web"])
+def user_game_profile_page(
+    user_id: int,
+    game_slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the per-game profile page showing Elo trajectory and game-specific matches."""
+    current_user = _get_optional_user(request, db)
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found.",
+        )
+
+    game = db.query(Game).filter(Game.slug == game_slug).first()
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game with slug '{game_slug}' not found.",
+        )
+
+    profile = (
+        db.query(GameProfile)
+        .filter(GameProfile.user_id == user_id, GameProfile.game_id == game.id)
+        .first()
+    )
+
+    game_matches = (
+        db.query(Match)
+        .filter(
+            Match.game_id == game.id,
+            or_(Match.player1_id == user_id, Match.player2_id == user_id),
+        )
+        .order_by(Match.created_at.desc())
+        .limit(30)
+        .all()
+    )
+
+    total_matches = (profile.wins + profile.losses + profile.draws) if profile else len(game_matches)
+    win_rate = round((profile.wins / total_matches * 100), 1) if (profile and total_matches > 0) else 0.0
+
+    return templates.TemplateResponse(
+        request=request,
+        name="game_profile.html",
+        context={
+            "current_user": current_user,
+            "target_user": target_user,
+            "game": game,
+            "profile": profile,
+            "game_matches": game_matches,
+            "total_matches": total_matches,
+            "win_rate": win_rate,
+        },
+    )
+
+
 @app.get("/replay/{match_id}", response_class=HTMLResponse, tags=["web"])
 def replay_page(
     match_id: int,

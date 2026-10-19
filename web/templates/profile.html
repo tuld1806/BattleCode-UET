@@ -3,28 +3,38 @@
 {% block title %}Hồ sơ & Quản lý Bot (Profile) - Battlecode 9x9{% endblock %}
 
 {% block content %}
+{% set display_user = target_user if (target_user is defined and target_user) else current_user %}
+{% set is_own_profile = (current_user and display_user and current_user.id == display_user.id) %}
+
 <div class="page-header">
   <div>
-    <h1 class="page-title">Hồ sơ người chơi & Quản lý Bot (Profile)</h1>
+    <h1 class="page-title">
+      {% if is_own_profile or (target_user is not defined or not target_user) %}
+        Hồ sơ người chơi &amp; Quản lý Bot (Profile)
+      {% else %}
+        Hồ sơ người chơi: {{ display_user.username }}
+      {% endif %}
+    </h1>
     <div class="page-subtitle">Tải lên thuật toán Python (.py) và theo dõi lịch sử trận đấu</div>
   </div>
 
-  {% if current_user %}
+  {% if display_user %}
   <div style="display: flex; gap: 12px; align-items: center;">
-    {% if current_user.is_admin %}
+    {% if display_user.is_admin %}
       <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 14px; padding: 6px 12px;">🛡️ Quản trị viên</span>
     {% else %}
       <div class="card" style="padding: 8px 16px; display: flex; gap: 16px;">
-        <div>Elo: <strong class="elo-badge">{{ current_user.elo }}</strong></div>
-        <div>Thắng: <strong style="color: #34d399;">{{ current_user.wins }}</strong></div>
-        <div>Thua: <strong style="color: #f87171;">{{ current_user.losses }}</strong></div>
+        <div>Kỳ thủ: <strong style="color: var(--text-primary);">{{ display_user.username }}</strong></div>
+        <div>Elo: <strong class="elo-badge">{{ display_user.elo }}</strong></div>
+        <div>Thắng: <strong style="color: #34d399;">{{ display_user.wins }}</strong></div>
+        <div>Thua: <strong style="color: #f87171;">{{ display_user.losses }}</strong></div>
       </div>
     {% endif %}
   </div>
   {% endif %}
 </div>
 
-{% if not current_user %}
+{% if not display_user %}
 <div class="card" style="text-align: center; padding: 48px 24px;">
   <h2>Vui lòng đăng nhập để quản lý Bot</h2>
   <p style="color: var(--muted); margin: 8px 0 24px;">Bạn cần đăng nhập tài khoản để tải lên file mã nguồn bot Python (.py) và tham gia thi đấu.</p>
@@ -33,7 +43,7 @@
     <a href="/register" class="btn" style="margin-left: 8px;">Đăng ký tài khoản</a>
   </div>
 </div>
-{% elif current_user.is_admin %}
+{% elif display_user.is_admin %}
 <div class="card" style="text-align: center; padding: 48px 24px; margin-bottom: 24px;">
   <h2>🛡️ Tài khoản Quản trị viên Hệ thống</h2>
   <p style="color: var(--muted); margin: 12px auto 24px; max-width: 600px; line-height: 1.6;">
@@ -64,6 +74,11 @@
         <div style="color: #3fb950;">W: <strong>{{ gp.wins }}</strong></div>
         <div style="color: #f85149;">L: <strong>{{ gp.losses }}</strong></div>
         <div style="color: var(--text-muted);">D: <strong>{{ gp.draws }}</strong></div>
+      </div>
+      <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border-subtle); text-align: right;">
+        <a href="/profile/{{ current_user.id }}/games/{{ gp.game.slug if gp.game else '' }}" style="font-size: 0.82rem; color: var(--accent); text-decoration: none;">
+          Chi tiết thành tích &rarr;
+        </a>
       </div>
     </div>
     {% endfor %}

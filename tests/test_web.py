@@ -622,6 +622,108 @@ def test_admin_portal_routes_success_for_admin_user(client: TestClient) -> None:
     assert "site_admin" in res_users.text
 
 
+def test_user_game_profile_page_renders_stats_and_chart(client: TestClient) -> None:
+    """Verify that /profile/{user_id}/games/{game_slug} returns 200 with Elo, chart, and matches."""
+    from server.models import Game, GameProfile, Match
+    db = SessionLocal()
+    u1 = User(username="pro_gamer_1", elo=1200)
+    u1.set_password("p1")
+    u2 = User(username="rival_player", elo=1300)
+    u2.set_password("p2")
+    db.add_all([u1, u2])
+    db.flush()
+
+    game = Game(
+        slug="rps-chess",
+        display_name="RPS Chess 9x9",
+        description_md="Luật chơi RPS Chess 9x9.",
+        is_active=True,
+    )
+    db.add(game)
+    db.flush()
+
+    gp = GameProfile(user_id=u1.id, game_id=game.id, elo=1680, wins=12, losses=3, draws=1)
+    db.add(gp)
+
+    m = Match(
+        game_id=game.id,
+        player1_id=u1.id,
+        player2_id=u2.id,
+        winner_id=u1.id,
+        win_reason="goal",
+        total_turns=18,
+        p1_elo_before=1650,
+        p1_elo_after=1680,
+        p2_elo_before=1330,
+        p2_elo_after=1300,
+        replay_path="/replays/match_123.json",
+    )
+    db.add(m)
+    db.commit()
+
+    u1_id = u1.id
+    game_slug = game.slug
+    db.close()
+
+    res = client.get(f"/profile/{u1_id}/games/{game_slug}")
+    assert res.status_code == 200
+    assert "pro_gamer_1" in res.text
+    assert "RPS Chess 9x9" in res.text
+    assert "1680" in res.text
+    assert "user-game-rating-chart" in res.text
+    assert "rival_player" in res.text
+    assert "goal" in res.text
+
+
+def test_user_game_profile_page_returns_404_for_unknown(client: TestClient) -> None:
+    """Verify that nonexistent user ID or game slug returns HTTP 404."""
+    from server.models import Game
+    db = SessionLocal()
+    u = User(username="known_user", elo=1200)
+    u.set_password("pass")
+    g = Game(slug="rps-chess", display_name="RPS Chess 9x9", is_active=True)
+    db.add_all([u, g])
+    db.commit()
+    u_id = u.id
+    db.close()
+
+    # Unknown user
+    res_unknown_user = client.get("/profile/99999/games/rps-chess")
+    assert res_unknown_user.status_code == 404
+
+    # Unknown game slug
+    res_unknown_game = client.get(f"/profile/{u_id}/games/nonexistent-slug")
+    assert res_unknown_game.status_code == 404
+
+
+def test_user_profile_by_id_page_renders_profile(client: TestClient) -> None:
+    """Verify that /profile/{user_id} renders user's profile with game cards."""
+    from server.models import Game, GameProfile
+    db = SessionLocal()
+    u = User(username="spectated_player", elo=1200)
+    u.set_password("pass")
+    db.add(u)
+    db.flush()
+
+    g = Game(slug="rps-chess", display_name="RPS Chess 9x9", is_active=True)
+    db.add(g)
+    db.flush()
+
+    gp = GameProfile(user_id=u.id, game_id=g.id, elo=1550, wins=5, losses=1, draws=0)
+    db.add(gp)
+    db.commit()
+
+    u_id = u.id
+    db.close()
+
+    res = client.get(f"/profile/{u_id}")
+    assert res.status_code == 200
+    assert "spectated_player" in res.text
+    assert "RPS Chess 9x9" in res.text
+    assert "1550" in res.text
+
+
+
 
 
 

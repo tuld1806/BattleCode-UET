@@ -93,20 +93,22 @@
                   <tr class="{% if current_user and current_user.id == item.user_id %}highlight-row{% endif %}">
                     <td>{{ loop.index }}</td>
                     <td>
-                      <strong>{{ item.user.username if item.user else 'Unknown' }}</strong>
-                      {% if current_user and current_user.id == item.user_id %}
+                      <strong>{{ item.username if item.username is defined else (item.user.username if item.user else 'Unknown') }}</strong>
+                      {% if current_user and current_user.id == (item.user_id if item.user_id is defined else (item.user.id if item.user else None)) %}
                         <span class="badge badge-primary">Bạn</span>
                       {% endif %}
                     </td>
                     <td>
-                      {% if item.bot %}
+                      {% if item.bot_filename is defined and item.bot_filename %}
+                        <span class="bot-tag">🤖 {{ item.bot_filename }}</span>
+                      {% elif item.bot %}
                         <span class="bot-tag">🤖 {{ item.bot.filename }}</span>
                       {% else %}
                         <span class="text-muted">Chưa nạp bot</span>
                       {% endif %}
                     </td>
                     <td style="text-align: right; color: var(--text-muted); font-size: 0.85rem;">
-                      {{ item.enrolled_at.strftime('%d/%m/%Y %H:%M') if item.enrolled_at else '-' }}
+                      {{ item.enrolled_at.strftime('%d/%m/%Y %H:%M') if (item.enrolled_at and item.enrolled_at.strftime is defined) else (item.enrolled_at if item.enrolled_at else '-') }}
                     </td>
                   </tr>
                 {% endfor %}

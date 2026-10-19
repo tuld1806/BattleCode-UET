@@ -63,11 +63,28 @@ def seed_default_game(db_session: Optional[Session] = None, target_engine=None) 
         close_after = True
 
     try:
+        from server.models import Game, Tournament
         from sqlalchemy import or_
         existing = db.query(Game).filter(or_(Game.id == 1, Game.slug == "rps-chess")).first()
         if existing:
             if existing.slug != "rps-chess":
                 existing.slug = "rps-chess"
+                db.commit()
+            existing_t = db.query(Tournament).filter(Tournament.game_id == existing.id).first()
+            if not existing_t:
+                default_t = Tournament(
+                    id=1,
+                    game_id=existing.id,
+                    name="RPS Chess Championship",
+                    status="open",
+                    ffa_start_time="19:00",
+                    ffa_end_time="21:00",
+                    ffa_day_count=7,
+                    bracket_top_n=8,
+                    elo_multiplier=1.5,
+                    enrollment_open=True,
+                )
+                db.add(default_t)
                 db.commit()
             return
 
@@ -81,6 +98,22 @@ def seed_default_game(db_session: Optional[Session] = None, target_engine=None) 
             is_active=True,
         )
         db.add(default_game)
+        db.commit()
+        db.refresh(default_game)
+
+        default_t = Tournament(
+            id=1,
+            game_id=default_game.id,
+            name="RPS Chess Championship",
+            status="open",
+            ffa_start_time="19:00",
+            ffa_end_time="21:00",
+            ffa_day_count=7,
+            bracket_top_n=8,
+            elo_multiplier=1.5,
+            enrollment_open=True,
+        )
+        db.add(default_t)
         db.commit()
     except Exception:
         db.rollback()
