@@ -170,6 +170,47 @@ def home_page(
     )
 
 
+@app.get("/games/{slug}", response_class=HTMLResponse, tags=["web"])
+def game_detail_page(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the 3-tab game detail view (Rules, Leaderboard, Tournaments)."""
+    current_user = _get_optional_user(request, db)
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game '{slug}' not found.",
+        )
+
+    profiles = (
+        db.query(GameProfile)
+        .filter(GameProfile.game_id == game.id)
+        .order_by(GameProfile.elo.desc())
+        .all()
+    )
+
+    tournaments = (
+        db.query(Tournament)
+        .filter(Tournament.game_id == game.id)
+        .order_by(Tournament.created_at.desc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="game_detail.html",
+        context={
+            "game": game,
+            "profiles": profiles,
+            "tournaments": tournaments,
+            "current_user": current_user,
+        },
+    )
+
+
 @app.get("/login", response_class=HTMLResponse, tags=["web"])
 def login_page(
     request: Request,

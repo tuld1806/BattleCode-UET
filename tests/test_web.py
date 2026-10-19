@@ -376,5 +376,46 @@ def test_lobby_page_returns_200_and_renders_game_cards(client: TestClient) -> No
     assert "/games/tictactoe-ultimate" in res.text
 
 
+def test_game_detail_page_3_tabs(client: TestClient) -> None:
+    """Verify that /games/{slug} returns 200 with Rules, Leaderboard, and Tournaments tabs."""
+    from server.models import Game, GameProfile, Tournament
+    db = SessionLocal()
+    g = Game(
+        slug="rps-chess",
+        display_name="RPS Chess 9x9",
+        description_md="Luật chơi RPS Chess 9x9: Oẳn tù tì trên bàn cờ 9x9.",
+        is_active=True,
+    )
+    db.add(g)
+    db.commit()
+
+    u = User(username="chess_master", elo=1600, wins=10, losses=2)
+    u.set_password("p123")
+    db.add(u)
+    db.flush()
+
+    gp = GameProfile(user_id=u.id, game_id=g.id, elo=1650, wins=10, losses=2)
+    db.add(gp)
+
+    t = Tournament(game_id=g.id, name="Spring Open 2026", status="open", enrollment_open=True)
+    db.add(t)
+    db.commit()
+    db.close()
+
+    res = client.get("/games/rps-chess")
+    assert res.status_code == 200
+    assert "RPS Chess 9x9" in res.text
+    assert 'id="tab-rules"' in res.text
+    assert 'id="tab-leaderboard"' in res.text
+    assert 'id="tab-tournaments"' in res.text
+    assert "chess_master" in res.text
+    assert "Spring Open 2026" in res.text
+
+    # 404 for unknown game
+    res_404 = client.get("/games/unknown-nonexistent-game")
+    assert res_404.status_code == 404
+
+
+
 
 
