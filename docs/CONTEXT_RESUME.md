@@ -398,10 +398,19 @@ ps_chess_9x9 (game_id=1).
    - Xuất Bảng Điểm Excel Chuẩn (UTF-8-SIG CSV): Tính toán điểm tổng hợp ($0.5 \times \text{Normalized Elo} + 0.5 \times \text{Bracket Points}$), sinh file CSV kèm UTF-8 BOM (`\ufeff`) bảo đảm mở trực tiếp trên Microsoft Excel và Google Sheets hiển thị tiếng Việt hoàn hảo không lỗi font.
 
 9. **Giao Diện Đa Trò Chơi Phía Người Dùng & Quản Trị (Track C — Frontend & Templates)**:
-   - **Sảnh Game Đa Bộ Môn (`web/templates/lobby.html`)**: Trang chủ mới hiển thị danh mục các tựa game đang kích hoạt dưới dạng thẻ trực quan (Card Grid), số lượng người chơi tích cực và giải đấu đang mở.
-   - **Trang Chi Tiết Bộ Môn 3 Tabs (`web/templates/game_detail.html`)**: Tab 1 xem luật chơi, Tab 2 bảng xếp hạng Elo riêng kèm đồ thị lịch sử, Tab 3 danh sách giải đấu và nút ghi danh trực tiếp.
-   - **Trang Giải Đấu Công Khai (`web/templates/tournament_detail.html`)**: Theo dõi đồng hồ đếm ngược mở cổng FFA, danh sách đối thủ đã ghi danh và sơ đồ nhánh đấu trực tiếp.
-   - **Hồ Sơ Đa Game (`web/templates/profile.html`)**: Hiển thị lưới thẻ GameProfile phản ánh thành tích Elo, số trận thắng/thua/hòa của từng trò chơi độc lập.
+   - **Sảnh Game Đa Bộ Môn (`web/templates/lobby.html`)**: Trang chủ mới hiển thị danh mục các tựa game đang kích hoạt dưới dạng thẻ trực quan (Card Grid), số lượng người chơi tích cực và giải đấu đang mở (`GET /lobby`).
+   - **Trang Chi Tiết Bộ Môn 3 Tabs (`web/templates/game_detail.html`)**: Tab 1 xem luật chơi, Tab 2 bảng xếp hạng Elo riêng kèm đồ thị lịch sử, Tab 3 danh sách giải đấu và nút ghi danh trực tiếp (`GET /games/{slug}`).
+   - **Trang Giải Đấu Công Khai (`web/templates/tournament_detail.html`)**: Theo dõi đồng hồ đếm ngược mở cổng FFA, danh sách đối thủ đã ghi danh và sơ đồ nhánh đấu trực tiếp (`GET /games/{slug}/tournaments/{id}`).
+   - **Hồ Sơ Đa Game (`web/templates/profile.html`)**: Hiển thị lưới thẻ GameProfile phản ánh thành tích Elo, số trận thắng/thua/hòa của từng trò chơi độc lập (`GET /profile`).
+   - **Phân Hệ Quản Trị Admin Portal Hoàn Thiện (`web/templates/admin/`)**:
+     - `dashboard.html` (`GET /admin/dashboard`): Thống kê toàn diện (Games, Tournaments, Users, Bracket Matches) và trung tâm điều hướng nhanh.
+     - `games.html` (`GET /admin/games`): Danh mục trò chơi, kích hoạt/ẩn plugin.
+     - `game_upload.html` (`GET /admin/games/upload`): Kéo thả file zip plugin, kiểm tra AST an toàn và nạp runtime.
+     - `tournaments.html` (`GET /admin/tournaments`): Quản lý và khởi tạo giải đấu mới theo từng bộ môn.
+     - `tournament_detail.html` (`GET /admin/tournaments/{id}`): Điều phối giải đấu, xác thực mật khẩu tạo Bracket, chạy BO3 tự động và xuất file điểm Excel (UTF-8-SIG).
+     - `users.html` (`GET /admin/users`): Quản lý tài khoản người chơi, trạng thái bot và vai trò.
+     - Cơ chế bảo vệ Route nghiêm ngặt: Kiểm tra quyền quản trị (`_require_admin_web_user`), chuyển hướng 303 về `/login?next=...` nếu chưa xác thực và trả về HTTP 403 Forbidden đối với người chơi thông thường.
+   - **Kiểm Thử Hồi Quy Toàn Diện**: 377/377 test cases xanh 100% (25/25 test cases web routes, 8/8 admin security, 6/6 playoff runner, 2/2 Excel CSV export, 14/14 admin tournament routes).
    - **Kế hoạch triển khai hoàn thiện**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md).
 
 

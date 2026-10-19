@@ -104,10 +104,10 @@
 - [x] B12: `tests/test_admin_game_routes.py` — 5/5 test cases passed
 - [x] B13: Cập nhật `test_tournament.py`, `test_rating_history.py`
 - [x] B14: `pytest -v` xanh 100% (357/357 passed)
-- [ ] B15: Xác thực mật khẩu Admin khi tạo nhánh đấu (`POST /api/admin/bracket/generate`, `/api/admin/tournaments/{id}/start-bracket`)
-- [ ] B16: `server/bracket_runner.py` — Chạy trận đấu BO3 tự động, đổi bên luân phiên, đôn người thắng từ Tứ kết đến Chung kết
-- [ ] B17: `server/bracket_export.py` — Xuất bảng điểm tổng kết CSV tương thích Excel (UTF-8-SIG với BOM `\ufeff`)
-- [ ] B18: Kết nối 6 endpoints chạy giải và xuất CSV vào FastAPI router
+- [x] B15: Xác thực mật khẩu Admin khi tạo nhánh đấu (`POST /api/admin/bracket/generate`, `/api/admin/tournaments/{id}/start-bracket`)
+- [x] B16: `server/bracket_runner.py` — Chạy trận đấu BO3 tự động, đổi bên luân phiên, đôn người thắng từ Tứ kết đến Chung kết
+- [x] B17: `server/bracket_export.py` — Xuất bảng điểm tổng kết CSV tương thích Excel (UTF-8-SIG với BOM `\ufeff`)
+- [x] B18: Kết nối 6 endpoints chạy giải và xuất CSV vào FastAPI router
 
 > **Kế hoạch thực hiện chi tiết**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md)
 
@@ -148,20 +148,20 @@
 - Giữ nguyên CSS design tokens: `--bg-main: #0d1117`, `--bg-surface: #161b22`, v.v.
 
 **Checklist**:
-- [ ] C1: `web/templates/lobby.html` — game card grid + fetch `/api/games`
-- [ ] C2: `web/templates/game_detail.html` — 3 tabs: rules, leaderboard, tournaments
-- [ ] C3: `web/templates/tournament_detail.html` — enrolled list + FFA countdown + bracket
-- [ ] C4: `web/templates/admin/dashboard.html` — stats overview
-- [ ] C5: `web/templates/admin/games.html` — game list + toggle
-- [ ] C6: `web/templates/admin/game_upload.html` — upload form + feedback
-- [ ] C7: `web/templates/admin/tournaments.html` + `tournament_detail.html`
-- [ ] C8: `web/templates/admin/users.html`
-- [ ] C9: `web/templates/profile.html` — per-game profile cards
-- [ ] C10: `web/templates/game_profile.html` — per-game detail
-- [ ] C11: `web/templates/base.html` — navbar update
-- [ ] C12: `web/static/js/rating_chart.js` — nhận `game_slug` param
-- [ ] C13: `tests/test_web.py` — route tests cho tất cả trang mới
-- [ ] C14: `pytest tests/test_web.py` xanh 100%
+- [x] C1: `web/templates/lobby.html` — game card grid + fetch `/api/games`
+- [x] C2: `web/templates/game_detail.html` — 3 tabs: rules, leaderboard, tournaments
+- [x] C3: `web/templates/tournament_detail.html` — enrolled list + FFA countdown + bracket
+- [x] C4: `web/templates/admin/dashboard.html` — stats overview
+- [x] C5: `web/templates/admin/games.html` — game list + toggle
+- [x] C6: `web/templates/admin/game_upload.html` — upload form + feedback
+- [x] C7: `web/templates/admin/tournaments.html` + `tournament_detail.html`
+- [x] C8: `web/templates/admin/users.html`
+- [x] C9: `web/templates/profile.html` — per-game profile cards
+- [x] C10: `web/templates/game_profile.html` — per-game detail
+- [x] C11: `web/templates/base.html` — navbar update
+- [x] C12: `web/static/js/rating_chart.js` — nhận `game_slug` param
+- [x] C13: `tests/test_web.py` — route tests cho tất cả trang mới
+- [x] C14: `pytest tests/test_web.py` xanh 100%
 
 ---
 
