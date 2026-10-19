@@ -347,4 +347,34 @@ def test_admin_ui_navbar_and_profile_separation(client: TestClient) -> None:
     assert "uploadBotForm" not in res_prof.text
 
 
+def test_lobby_page_returns_200_and_renders_game_cards(client: TestClient) -> None:
+    """Verify that /lobby renders game cards with title, description, and play button."""
+    from server.models import Game
+    db = SessionLocal()
+    g1 = Game(
+        slug="rps-chess",
+        display_name="RPS Chess 9x9",
+        description_md="Chiến thuật Oẳn tù tì trên bàn cờ 9x9",
+        is_active=True,
+    )
+    g2 = Game(
+        slug="tictactoe-ultimate",
+        display_name="TicTacToe Ultimate",
+        description_md="Cờ ca-rô mở rộng đấu trí đỉnh cao",
+        is_active=True,
+    )
+    db.add_all([g1, g2])
+    db.commit()
+    db.close()
+
+    res = client.get("/lobby")
+    assert res.status_code == 200
+    assert "game-card" in res.text
+    assert "RPS Chess 9x9" in res.text
+    assert "TicTacToe Ultimate" in res.text
+    assert "/games/rps-chess" in res.text
+    assert "/games/tictactoe-ultimate" in res.text
+
+
+
 

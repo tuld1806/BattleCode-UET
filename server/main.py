@@ -19,7 +19,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from server.database import get_db, init_db
-from server.models import Bot, BracketMatch, Match, User
+from server.models import Bot, BracketMatch, Game, GameProfile, Match, Tournament, TournamentEnrollment, User
 from server.routes import admin, admin_games, admin_tournaments, auth, bots, leaderboard, matches, games
 from server.routes.admin import _get_all_settings_dict
 from server.routes.auth import ACTIVE_SESSIONS, get_token_from_request
@@ -95,13 +95,44 @@ def _get_optional_user(request: Request, db: Session) -> User | None:
 # ================== WEB UI HTML ROUTES ==================
 
 
+@app.get("/lobby", response_class=HTMLResponse, tags=["web"])
+def lobby_page(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render the multi-game lobby landing portal."""
+    current_user = _get_optional_user(request, db)
+    games = db.query(Game).filter(Game.is_active == True).order_by(Game.id.asc()).all()  # noqa: E712
+    return templates.TemplateResponse(
+        request=request,
+        name="lobby.html",
+        context={
+            "games": games,
+            "current_user": current_user,
+        },
+    )
+
+
 @app.get("/", response_class=HTMLResponse, tags=["web"])
 def home_page(
     request: Request,
     db: Session = Depends(get_db),
 ) -> HTMLResponse:
-    """Render the homepage leaderboard and FFA challenge portal."""
+    """Render the homepage leaderboard and FFA challenge portal, or multi-game lobby."""
     current_user = _get_optional_user(request, db)
+    games = db.query(Game).filter(Game.is_active == True).order_by(Game.id.asc()).all()  # noqa: E712
+
+    view_mode = request.query_params.get("view", "").strip().lower()
+    if view_mode == "lobby" or (len(games) > 1 and view_mode != "legacy"):
+        return templates.TemplateResponse(
+            request=request,
+            name="lobby.html",
+            context={
+                "games": games,
+                "current_user": current_user,
+            },
+        )
+
     users = (
         db.query(User)
         .filter(User.is_admin == False)  # noqa: E712
@@ -134,6 +165,7 @@ def home_page(
             "is_portal_open": is_portal_open,
             "daily_multiplier_x": settings.get("daily_multiplier_x", 1.5),
             "current_user": current_user,
+            "games": games,
         },
     )
 

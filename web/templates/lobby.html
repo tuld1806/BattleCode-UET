@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}Sảnh Trò Chơi — BattleCode-UET Platform{% endblock %}
+
+{% block content %}
+<div class="lobby-container">
+  <header class="lobby-header">
+    <div class="lobby-hero">
+      <div class="hero-badge">🎮 Sảnh Đa Bộ Môn</div>
+      <h1 class="hero-title">Đấu Trường Trí Tuệ Nhân Tạo</h1>
+      <p class="hero-subtitle">
+        Lựa chọn tựa game yêu thích, thiết kế thuật toán bot tối ưu và tranh tài trên bảng xếp hạng Elo cùng cộng đồng.
+      </p>
+    </div>
+  </header>
+
+  <section class="games-section">
+    <div class="section-header">
+      <h2 class="section-title">Danh Sách Trò Chơi Khả Dụng</h2>
+      <span class="games-count badge">{{ games|length }} Bộ môn</span>
+    </div>
+
+    {% if games %}
+      <div class="games-grid">
+        {% for game in games %}
+          <article class="game-card" id="game-card-{{ game.slug }}">
+            <div class="game-card-header">
+              <div class="game-icon">
+                {% if game.slug == 'rps-chess' %}
+                  ⚔️
+                {% elif 'chess' in game.slug %}
+                  ♟️
+                {% elif 'tic' in game.slug %}
+                  ⭕
+                {% else %}
+                  🕹️
+                {% endif %}
+              </div>
+              <div class="game-meta">
+                <h3 class="game-title">{{ game.display_name }}</h3>
+                <span class="game-slug">{{ game.slug }}</span>
+              </div>
+              <span class="status-tag active">Đang mở</span>
+            </div>
+
+            <div class="game-card-body">
+              <p class="game-desc">
+                {{ game.description_md or "Đấu trường lập trình thuật toán bot AI với luật chơi chuẩn hóa." }}
+              </p>
+            </div>
+
+            <div class="game-card-footer">
+              <div class="game-stats">
+                <span title="Người chơi tích cực">👥 Sẵn sàng</span>
+                <span title="Giải đấu">🏆 Giải đấu</span>
+              </div>
+              <a href="/games/{{ game.slug }}" class="btn btn-primary btn-play">
+                Khám phá &amp; Thi đấu &rarr;
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state card">
+        <div class="empty-icon">🕹️</div>
+        <h3>Chưa có trò chơi nào được kích hoạt</h3>
+        <p class="text-muted">Quản trị viên đang cấu hình thêm các bộ môn thi đấu mới. Vui lòng quay lại sau!</p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+
+<style>
+.lobby-container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 1.5rem 0 3rem;
+}
+
+.lobby-header {
+  margin-bottom: 2.5rem;
+  text-align: center;
+}
+
+.lobby-hero {
+  background: linear-gradient(135deg, rgba(22, 27, 34, 0.95), rgba(33, 40, 51, 0.8));
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.hero-badge {
+  display: inline-block;
+  padding: 0.35rem 0.85rem;
+  background: rgba(88, 166, 255, 0.15);
+  color: var(--accent);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.hero-title {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
+}
+
+.hero-subtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 680px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.5rem;
+}
+
+.game-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.game-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.game-card-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.game-icon {
+  font-size: 1.75rem;
+  background: rgba(88, 166, 255, 0.1);
+  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(88, 166, 255, 0.2);
+}
+
+.game-meta {
+  flex: 1;
+}
+
+.game-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 0.2rem 0;
+}
+
+.game-slug {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.status-tag {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.status-tag.active {
+  background: rgba(35, 134, 54, 0.2);
+  color: #3fb950;
+  border: 1px solid rgba(35, 134, 54, 0.4);
+}
+
+.game-card-body {
+  flex: 1;
+  margin-bottom: 1.25rem;
+}
+
+.game-desc {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.game-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(48, 54, 61, 0.5);
+  padding-top: 1rem;
+}
+
+.game-stats {
+  display: flex;
+  gap: 0.85rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.btn-play {
+  padding: 0.45rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+}
+</style>
+{% endblock %}
