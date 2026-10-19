@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from server.boss_manager import deploy_boss, get_all_bosses_status, retract_boss
+from server.bracket_export import generate_bracket_scores_csv
+from server.bracket_runner import run_all_bracket_rounds, run_bracket_round
 from server.database import get_db
 from server.models import Bot, BracketMatch, TournamentSetting, User
 from server.routes.auth import get_current_admin
@@ -327,3 +329,38 @@ def toggle_boss_deployment(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid action: '{payload.action}'. Expected 'deploy' or 'retract'.",
         )
+
+
+@router.post("/bracket/run-round")
+def admin_run_bracket_round(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Execute current pending round matches in the active bracket."""
+    return run_bracket_round(db)
+
+
+@router.post("/bracket/run-all")
+def admin_run_all_bracket_rounds(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Sequentially execute all remaining bracket rounds until the tournament concludes."""
+    return run_all_bracket_rounds(db)
+
+
+@router.get("/bracket/export-scores")
+def admin_export_bracket_scores(
+    current_admin: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+) -> Response:
+    """Export composite final scores as an Excel UTF-8-SIG CSV attachment."""
+    csv_data = generate_bracket_scores_csv(db)
+    return Response(
+        content=csv_data,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": "attachment; filename=battlecode_final_scores.csv"
+        },
+    )
+

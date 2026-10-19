@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from server.bracket_export import generate_bracket_scores_csv
+from server.bracket_runner import run_all_bracket_rounds, run_bracket_round
 from server.database import get_db
 from server.models import BracketMatch, Game, GameProfile, Tournament, TournamentEnrollment, User
 from server.routes.admin import AdminConfirmPasswordPayload
@@ -298,3 +300,59 @@ def start_bracket(
         "message": f"Bracket started with {len(top_candidates)} contestants.",
         "matchups": matchups,
     }
+
+
+@router.post("/{tournament_id}/bracket/run-round")
+def tournament_run_bracket_round(
+    tournament_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    """Execute current pending round matches in a tournament bracket."""
+    tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tourney:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found.",
+        )
+    return run_bracket_round(db, tournament_id=tournament_id)
+
+
+@router.post("/{tournament_id}/bracket/run-all")
+def tournament_run_all_bracket_rounds(
+    tournament_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> Dict[str, Any]:
+    """Sequentially execute all remaining rounds for a tournament until finished."""
+    tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tourney:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found.",
+        )
+    return run_all_bracket_rounds(db, tournament_id=tournament_id)
+
+
+@router.get("/{tournament_id}/export-scores")
+def tournament_export_scores(
+    tournament_id: int,
+    db: Session = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+) -> Response:
+    """Export composite final scores for a specific tournament as an Excel UTF-8-SIG CSV attachment."""
+    tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tourney:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found.",
+        )
+    csv_data = generate_bracket_scores_csv(db, tournament_id=tournament_id)
+    return Response(
+        content=csv_data,
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f"attachment; filename=tournament_{tournament_id}_final_scores.csv"
+        },
+    )
+

@@ -241,3 +241,87 @@ def test_start_bracket_seeds_enrolled_players(client_and_db):
     match2 = bms[1]
     assert {match1.player1_id, match1.player2_id} == {p2_id, p3_id}
     assert {match2.player1_id, match2.player2_id} == {p4_id, p1_id}
+
+
+def test_admin_bracket_run_round_and_run_all(client_and_db):
+    """Test calling run-round and run-all endpoints for global bracket and per-tournament bracket."""
+    from unittest.mock import patch
+    client = client_and_db["client"]
+    admin_token = client_and_db["admin_token"]
+    session = client_and_db["session"]
+    players = client_and_db["players"]
+    game = client_and_db["game"]
+
+    # 1. Test global bracket run-round
+    m1 = BracketMatch(
+        round_name="Final",
+        match_index=0,
+        player1_id=players[0].id,
+        player2_id=players[1].id,
+        status="pending",
+    )
+    session.add(m1)
+    session.commit()
+
+    with patch("server.bracket_runner.run_match", return_value={"winner": 1, "score_p1": 1, "score_p2": 0}):
+        resp = client.post(
+            "/api/admin/bracket/run-round",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+    assert resp.status_code == 200
+    assert resp.json()["matches_played"] >= 1
+
+    # 2. Test tournament-scoped run-all
+    tourney = Tournament(game_id=game.id, name="Run All Tourney", status="bracket")
+    session.add(tourney)
+    session.commit()
+
+    m2 = BracketMatch(
+        round_name="Final",
+        match_index=0,
+        player1_id=players[2].id,
+        player2_id=players[3].id,
+        status="pending",
+    )
+    session.add(m2)
+    session.commit()
+
+    with patch("server.bracket_runner.run_match", return_value={"winner": 1, "score_p1": 1, "score_p2": 0}):
+        resp = client.post(
+            f"/api/admin/tournaments/{tourney.id}/bracket/run-all",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+    assert resp.status_code == 200
+    assert "champion_id" in resp.json()
+
+
+def test_admin_bracket_export_scores(client_and_db):
+    """Test CSV export endpoints return 200 with text/csv media type and attachment header."""
+    client = client_and_db["client"]
+    admin_token = client_and_db["admin_token"]
+    session = client_and_db["session"]
+    game = client_and_db["game"]
+
+    tourney = Tournament(game_id=game.id, name="Export Tourney", status="finished")
+    session.add(tourney)
+    session.commit()
+
+    # Global export
+    resp = client.get(
+        "/api/admin/bracket/export-scores",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    assert "attachment" in resp.headers["content-disposition"]
+    assert resp.text.startswith("\ufeff")
+
+    # Tournament-scoped export
+    resp = client.get(
+        f"/api/admin/tournaments/{tourney.id}/export-scores",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 200
+    assert "text/csv" in resp.headers["content-type"]
+    assert resp.text.startswith("\ufeff")
+
