@@ -122,11 +122,114 @@ def seed_default_game(db_session: Optional[Session] = None, target_engine=None) 
             db.close()
 
 
+def auto_discover_and_seed_games(
+    db_session: Optional[Session] = None, target_engine=None
+):
+    """Scan the games/ directory and idempotently register all discovered games in the database.
+
+    For every subdirectory in games/ containing config.yaml and engine.py:
+    1. Parse config.yaml manifest safely
+    2. Upsert Game record in DB
+    3. Ensure an active default Tournament exists for the game
+    """
+    from pathlib import Path
+    import json
+    import yaml
+    from server.models import Game, Tournament
+
+    close_after = False
+    if db_session is not None:
+        db = db_session
+    else:
+        eng = target_engine or engine
+        scoped_session = sessionmaker(autocommit=False, autoflush=False, bind=eng)
+        db = scoped_session()
+        close_after = True
+
+    discovered_games = []
+    try:
+        repo_root = Path(__file__).resolve().parent.parent
+        games_dir = repo_root / "games"
+
+        if games_dir.exists() and games_dir.is_dir():
+            for entry in sorted(games_dir.iterdir(), key=lambda p: p.name):
+                if entry.is_dir() and not entry.name.startswith((".", "_")):
+                    config_file = entry / "config.yaml"
+                    engine_file = entry / "engine.py"
+                    if config_file.is_file() and engine_file.is_file():
+                        try:
+                            with open(config_file, "r", encoding="utf-8") as f:
+                                config_data = yaml.safe_load(f) or {}
+                        except Exception:
+                            # Skip malformed YAML manifests safely
+                            continue
+
+                        slug = str(config_data.get("slug", entry.name)).strip()
+                        display_name = str(config_data.get("display_name", slug.replace("-", " ").title())).strip()
+                        description_md = str(config_data.get("description_md", f"Rules and information for {display_name}"))
+                        plugin_rel_path = f"games/{entry.name}"
+
+                        cfg_copy = {
+                            k: v for k, v in config_data.items()
+                            if k not in ("slug", "display_name", "description_md")
+                        }
+                        config_json = json.dumps(cfg_copy)
+
+                        existing_game = db.query(Game).filter(Game.slug == slug).first()
+                        if existing_game:
+                            existing_game.display_name = display_name
+                            existing_game.description_md = description_md
+                            existing_game.plugin_path = plugin_rel_path
+                            existing_game.config_json = config_json
+                            existing_game.is_active = True
+                            target_game = existing_game
+                        else:
+                            target_game = Game(
+                                slug=slug,
+                                display_name=display_name,
+                                description_md=description_md,
+                                plugin_path=plugin_rel_path,
+                                config_json=config_json,
+                                is_active=True,
+                            )
+                            db.add(target_game)
+                            db.flush()
+
+                        existing_t = db.query(Tournament).filter(Tournament.game_id == target_game.id).first()
+                        if not existing_t:
+                            default_t = Tournament(
+                                game_id=target_game.id,
+                                name=f"{display_name} Championship",
+                                status="open",
+                                ffa_start_time="19:00",
+                                ffa_end_time="21:00",
+                                ffa_day_count=7,
+                                bracket_top_n=8,
+                                elo_multiplier=1.5,
+                                enrollment_open=True,
+                            )
+                            db.add(default_t)
+
+                        discovered_games.append(target_game)
+
+        db.commit()
+        for g in discovered_games:
+            db.refresh(g)
+        return discovered_games
+    except Exception:
+        db.rollback()
+        return []
+    finally:
+        if close_after:
+            db.close()
+
 
 def init_db(target_engine=None) -> None:
-    """Create all database tables registered on Base metadata and seed default game."""
+    """Create all database tables registered on Base metadata and seed discovered games."""
     from server import models  # noqa: F401
     eng = target_engine or engine
     Base.metadata.create_all(bind=eng)
     seed_default_game(target_engine=eng)
+    auto_discover_and_seed_games(target_engine=eng)
+
 
