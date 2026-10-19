@@ -260,6 +260,7 @@ def test_full_tournament_e2e_lifecycle(client: TestClient) -> None:
     # -------------------------------------------------------------
     res_bracket_gen = client.post(
         "/api/admin/bracket/generate",
+        json={"admin_password": "admin123"},
         headers=admin_headers,
     )
     assert res_bracket_gen.status_code == 200, res_bracket_gen.text

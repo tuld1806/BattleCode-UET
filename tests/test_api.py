@@ -295,7 +295,11 @@ def test_admin_settings_and_bracket():
         )
 
     # 5. Generate bracket
-    res_bracket = client.post("/api/admin/bracket/generate", headers=h_admin)
+    res_bracket = client.post(
+        "/api/admin/bracket/generate",
+        json={"admin_password": "adminpassword123"},
+        headers=h_admin,
+    )
     assert res_bracket.status_code == 200
     matchups = res_bracket.json()
     assert len(matchups) >= 2
@@ -429,7 +433,11 @@ def test_admin_excluded_from_bracket_generation():
             headers=h,
         )
 
-    res_bracket = client.post("/api/admin/bracket/generate", headers=h_admin)
+    res_bracket = client.post(
+        "/api/admin/bracket/generate",
+        json={"admin_password": "adminpass123"},
+        headers=h_admin,
+    )
     assert res_bracket.status_code == 200
     matchups = res_bracket.json()
     for match in matchups:

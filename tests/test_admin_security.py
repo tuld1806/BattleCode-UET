@@ -144,7 +144,10 @@ def _get_admin_session_token_security(client: TestClient) -> None:
     init_db()
     db = SessionLocal()
     try:
-        admin = db.query(User).filter(User.is_admin == True).first()  # noqa: E712
+        target_uname = os.getenv("ADMIN_USERNAME", "admin").strip().lower()
+        admin = db.query(User).filter(User.username == target_uname).first()
+        if not admin:
+            admin = db.query(User).filter(User.is_admin == True).first()  # noqa: E712
         assert admin, "No admin user found"
         user_id = admin.id
     finally:
