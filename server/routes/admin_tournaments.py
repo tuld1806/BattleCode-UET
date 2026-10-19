@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from server.database import get_db
 from server.models import BracketMatch, Game, GameProfile, Tournament, TournamentEnrollment, User
+from server.routes.admin import AdminConfirmPasswordPayload
 from server.routes.auth import get_current_admin
 from server.tournament import generate_bracket
 
@@ -206,10 +207,17 @@ def set_tournament_status(
 @router.post("/{tournament_id}/start-bracket", response_model=Dict[str, Any])
 def start_bracket(
     tournament_id: int,
+    payload: AdminConfirmPasswordPayload,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ) -> Dict[str, Any]:
     """Generate playoff bracket from enrolled contestants ordered by GameProfile Elo."""
+    if not admin.verify_password(payload.admin_password):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Incorrect admin password. Bracket generation refused.",
+        )
+
     tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
     if not tourney:
         raise HTTPException(

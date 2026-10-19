@@ -206,8 +206,18 @@ def test_start_bracket_seeds_enrolled_players(client_and_db):
         session.add(enrollment)
     session.commit()
 
+    # 1. Invalid password returns 403
+    resp_bad = client.post(
+        f"/api/admin/tournaments/{tourney.id}/start-bracket",
+        json={"admin_password": "wrong_password_123"},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp_bad.status_code == 403
+
+    # 2. Correct password returns 200
     resp = client.post(
         f"/api/admin/tournaments/{tourney.id}/start-bracket",
+        json={"admin_password": "admin_pass"},
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert resp.status_code == 200
