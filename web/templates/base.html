@@ -15,6 +15,7 @@
     </a>
 
     <ul class="nav-links">
+      <li><a href="/lobby" class="{% if request.url.path == '/lobby' %}active{% endif %}">Sảnh Game (Lobby)</a></li>
       <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Leaderboard</a></li>
       <li><a href="/bracket" class="{% if request.url.path == '/bracket' %}active{% endif %}">Bracket</a></li>
       <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>

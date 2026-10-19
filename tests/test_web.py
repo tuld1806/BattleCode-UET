@@ -471,6 +471,44 @@ def test_public_tournament_detail(client: TestClient) -> None:
     assert res_mismatch.status_code == 404
 
 
+def test_profile_game_cards_and_navbar_lobby(client: TestClient) -> None:
+    """Verify that user profile displays individual GameProfile cards with game names and Elos."""
+    from server.models import Game, GameProfile
+    db = SessionLocal()
+    u = User(username="multigame_player", elo=1200)
+    u.set_password("p123")
+    db.add(u)
+    db.commit()
+
+    g1 = Game(slug="rps-chess", display_name="RPS Chess 9x9", is_active=True)
+    g2 = Game(slug="tictactoe-ultimate", display_name="TicTacToe Ultimate", is_active=True)
+    db.add_all([g1, g2])
+    db.commit()
+
+    gp1 = GameProfile(user_id=u.id, game_id=g1.id, elo=1620, wins=8, losses=2, draws=1)
+    gp2 = GameProfile(user_id=u.id, game_id=g2.id, elo=1410, wins=3, losses=1, draws=0)
+    db.add_all([gp1, gp2])
+    db.commit()
+    user_id = u.id
+    db.close()
+
+    token = "multigame_session_tok"
+    ACTIVE_SESSIONS[token] = user_id
+    client.cookies.set("session_token", token)
+
+    res = client.get("/profile")
+    assert res.status_code == 200
+    assert "game-profile-card" in res.text
+    assert "RPS Chess 9x9" in res.text
+    assert "1620" in res.text
+    assert "TicTacToe Ultimate" in res.text
+    assert "1410" in res.text
+
+    # Navbar check: lobby link is present
+    assert 'href="/lobby"' in res.text
+
+
+
 
 
 

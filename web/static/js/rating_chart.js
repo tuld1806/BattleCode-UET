@@ -458,9 +458,36 @@
     });
   }
 
+  /**
+   * Fetch rating history for a user or game and render the chart.
+   *
+   * @param {string|HTMLElement} containerId Mount container or element ID
+   * @param {string|number} target Either user_id or endpoint URL
+   * @param {string} [gameSlug] Optional game slug filter
+   * @param {Object} [options] Optional configuration options
+   */
+  async function fetchAndRender(containerId, target, gameSlug, options) {
+    var url = typeof target === 'string' && target.startsWith('/')
+      ? target
+      : '/api/users/' + target + '/rating-history?limit=50';
+    if (gameSlug) {
+      url += (url.indexOf('?') >= 0 ? '&' : '?') + 'game_slug=' + encodeURIComponent(gameSlug);
+    }
+    try {
+      var res = await fetch(url);
+      if (res.ok) {
+        var data = await res.json();
+        render(containerId, data, options);
+      }
+    } catch (err) {
+      console.error('Failed to fetch rating history:', err);
+    }
+  }
+
   // Global namespace export
   window.RatingChart = {
     render: render,
+    fetchAndRender: fetchAndRender,
     PALETTE: PALETTE
   };
 

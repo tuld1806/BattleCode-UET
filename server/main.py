@@ -312,6 +312,13 @@ def profile_page(
             .limit(20)
             .all()
         )
+        game_profiles = (
+            db.query(GameProfile)
+            .filter(GameProfile.user_id == current_user.id)
+            .all()
+        )
+    else:
+        game_profiles = []
 
     return templates.TemplateResponse(
         request=request,
@@ -320,6 +327,7 @@ def profile_page(
             "current_user": current_user,
             "user_bots": user_bots,
             "user_matches": user_matches,
+            "game_profiles": game_profiles,
         },
     )
 
