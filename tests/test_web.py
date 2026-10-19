@@ -416,6 +416,62 @@ def test_game_detail_page_3_tabs(client: TestClient) -> None:
     assert res_404.status_code == 404
 
 
+def test_public_tournament_detail(client: TestClient) -> None:
+    """Verify that /games/{slug}/tournaments/{id} returns 200 with enrolled list and bracket tree."""
+    from server.models import BracketMatch, Game, Tournament, TournamentEnrollment
+    db = SessionLocal()
+    g = Game(slug="rps-chess", display_name="RPS Chess 9x9", is_active=True)
+    db.add(g)
+    db.commit()
+
+    t = Tournament(
+        game_id=g.id,
+        name="Vô địch Mùa Xuân 2026",
+        status="bracket",
+        ffa_start_time="19:00",
+        ffa_end_time="21:00",
+        ffa_day_count=7,
+        bracket_top_n=4,
+    )
+    db.add(t)
+    db.commit()
+
+    u1 = User(username="player_alpha", elo=1500)
+    u1.set_password("p1")
+    u2 = User(username="player_beta", elo=1400)
+    u2.set_password("p2")
+    db.add_all([u1, u2])
+    db.commit()
+
+    e1 = TournamentEnrollment(tournament_id=t.id, user_id=u1.id)
+    e2 = TournamentEnrollment(tournament_id=t.id, user_id=u2.id)
+    bm = BracketMatch(
+        round_name="Final",
+        match_index=0,
+        player1_id=u1.id,
+        player2_id=u2.id,
+        status="pending",
+    )
+    db.add_all([e1, e2, bm])
+    db.commit()
+    t_id = t.id
+    db.close()
+
+    res = client.get(f"/games/rps-chess/tournaments/{t_id}")
+    assert res.status_code == 200
+    assert "Vô địch Mùa Xuân 2026" in res.text
+    assert "player_alpha" in res.text
+    assert "player_beta" in res.text
+    assert "bracket-container" in res.text or "bracket" in res.text.lower()
+
+    # 404 for nonexistent tournament or mismatched game slug
+    res_404 = client.get(f"/games/rps-chess/tournaments/99999")
+    assert res_404.status_code == 404
+    res_mismatch = client.get(f"/games/other-game/tournaments/{t_id}")
+    assert res_mismatch.status_code == 404
+
+
+
 
 
 

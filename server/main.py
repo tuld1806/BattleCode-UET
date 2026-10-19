@@ -211,6 +211,55 @@ def game_detail_page(
     )
 
 
+@app.get("/games/{slug}/tournaments/{tournament_id}", response_class=HTMLResponse, tags=["web"])
+def tournament_detail_page(
+    slug: str,
+    tournament_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> HTMLResponse:
+    """Render public tournament detail page with enrolled list and bracket tree."""
+    current_user = _get_optional_user(request, db)
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game '{slug}' not found.",
+        )
+
+    tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tourney or tourney.game_id != game.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found for game '{slug}'.",
+        )
+
+    enrollments = (
+        db.query(TournamentEnrollment)
+        .filter(TournamentEnrollment.tournament_id == tournament_id)
+        .order_by(TournamentEnrollment.enrolled_at.asc())
+        .all()
+    )
+
+    bracket_matches = (
+        db.query(BracketMatch)
+        .order_by(BracketMatch.id.asc())
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="tournament_detail.html",
+        context={
+            "game": game,
+            "tournament": tourney,
+            "enrollments": enrollments,
+            "bracket_matches": bracket_matches,
+            "current_user": current_user,
+        },
+    )
+
+
 @app.get("/login", response_class=HTMLResponse, tags=["web"])
 def login_page(
     request: Request,
