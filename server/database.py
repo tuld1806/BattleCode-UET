@@ -1,8 +1,9 @@
 """Database connection, SQLite engine configuration, and session management."""
 
+from contextlib import contextmanager
 import os
 from typing import Generator, Optional
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
@@ -43,6 +44,16 @@ Base = declarative_base()
 
 def get_db() -> Generator[Session, None, None]:
     """Dependency generator that yields a database session and ensures clean closure."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+@contextmanager
+def get_db_context() -> Generator[Session, None, None]:
+    """Context manager yielding a Session and ensuring clean closure."""
     db = SessionLocal()
     try:
         yield db
@@ -224,12 +235,75 @@ def auto_discover_and_seed_games(
             db.close()
 
 
+def seed_default_badges(db_session: Optional[Session] = None, target_engine=None) -> None:
+    """Idempotently seed default platform achievement badges."""
+    from server.models import Badge
+    close_after = False
+    if db_session is not None:
+        db = db_session
+    else:
+        eng = target_engine or engine
+        scoped_session = sessionmaker(autocommit=False, autoflush=False, bind=eng)
+        db = scoped_session()
+        close_after = True
+
+    default_badges = [
+        {
+            "slug": "top_1_champion",
+            "name": "Top 1 Giải Đấu",
+            "description": "Vô địch vòng chung kết playoff giải đấu.",
+            "icon": "👑",
+        },
+        {
+            "slug": "boss_slayer",
+            "name": "Kẻ Hủy Diệt Boss",
+            "description": "Đánh bại Boss cấp cao nhất (Apex Master).",
+            "icon": "⚔️",
+        },
+        {
+            "slug": "active_player",
+            "name": "Kỳ Thủ Tích Cực",
+            "description": "Đã tham gia thi đấu từ 10 trận trở lên.",
+            "icon": "🔥",
+        },
+    ]
+
+    try:
+        for b_data in default_badges:
+            existing = db.query(Badge).filter(Badge.slug == b_data["slug"]).first()
+            if not existing:
+                b = Badge(**b_data)
+                db.add(b)
+        db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        if close_after:
+            db.close()
+
+
 def init_db(target_engine=None) -> None:
     """Create all database tables registered on Base metadata and seed discovered games."""
     from server import models  # noqa: F401
     eng = target_engine or engine
     Base.metadata.create_all(bind=eng)
+
+    # Safe auto-migration for SQLite to ensure bracket_matches has tournament_id column
+    try:
+        with eng.connect() as conn:
+            result = conn.execute(text("PRAGMA table_info(bracket_matches)"))
+            columns = [row[1] for row in result.fetchall()]
+            if columns and "tournament_id" not in columns:
+                conn.execute(
+                    text("ALTER TABLE bracket_matches ADD COLUMN tournament_id INTEGER REFERENCES tournaments(id)")
+                )
+                conn.commit()
+    except Exception:
+        pass
+
     seed_default_game(target_engine=eng)
     auto_discover_and_seed_games(target_engine=eng)
+    seed_default_badges(target_engine=eng)
+
 
 

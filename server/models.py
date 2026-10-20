@@ -252,6 +252,9 @@ class BracketMatch(Base):
     __tablename__ = "bracket_matches"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    tournament_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("tournaments.id"), nullable=True, index=True
+    )
     round_name: Mapped[str] = mapped_column(String(64), nullable=False)
     match_index: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     player1_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
@@ -266,7 +269,60 @@ class BracketMatch(Base):
         nullable=False,
     )
 
+    tournament: Mapped[Optional["Tournament"]] = relationship("Tournament")
     player1: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player1_id])
     player2: Mapped[Optional["User"]] = relationship("User", foreign_keys=[player2_id])
     winner: Mapped[Optional["User"]] = relationship("User", foreign_keys=[winner_id])
+
+
+class ApiKey(Base):
+    """Cryptographically secure hashed API keys for CLI and automated script access."""
+
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(64), nullable=False, default="Default CLI Token")
+    key_prefix: Mapped[str] = mapped_column(String(12), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship("User")
+
+
+class Badge(Base):
+    """Achievement badge definition."""
+
+    __tablename__ = "badges"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    slug: Mapped[str] = mapped_column(String(64), unique=True, index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(128), nullable=False)
+    description: Mapped[str] = mapped_column(String(255), nullable=False)
+    icon: Mapped[str] = mapped_column(String(32), default="🏆", nullable=False)
+
+
+class UserBadge(Base):
+    """User badge achievement record."""
+
+    __tablename__ = "user_badges"
+    __table_args__ = (UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    badge_id: Mapped[int] = mapped_column(Integer, ForeignKey("badges.id"), nullable=False)
+    earned_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user: Mapped["User"] = relationship("User")
+    badge: Mapped["Badge"] = relationship("Badge")
+
 
