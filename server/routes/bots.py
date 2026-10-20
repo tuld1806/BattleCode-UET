@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
@@ -56,7 +58,8 @@ async def upload_bot(
         )
 
     # Validate syntax and security rules via AST sandbox
-    is_valid, error_msg = validate_bot_source(source_code)
+    interface = json.loads(game.config_json or "{}").get("bot_interface", "python_function")
+    is_valid, error_msg = validate_bot_source(source_code, entrypoint="get_action" if interface == "json_state" else "get_move")
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -69,7 +72,7 @@ async def upload_bot(
 
     timestamp = int(datetime.now(timezone.utc).timestamp())
     safe_stem = Path(raw_filename).stem.replace(" ", "_")
-    target_filename = f"user_{current_user.id}_{timestamp}_{safe_stem}.py"
+    target_filename = f"user_{current_user.id}_{timestamp}_{uuid.uuid4().hex}_{safe_stem}.py"
     target_path = bots_dir / target_filename
     target_path.write_text(source_code, encoding="utf-8")
 

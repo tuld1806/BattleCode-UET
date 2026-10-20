@@ -137,3 +137,10 @@ pytest -v
 ```
 
 All test cases execute locally in seconds, verifying system integrity before deployment.
+
+## Cyber-Grid and Stellar Armada backend
+
+Register the bundled tick-based games with `python scripts/register_rulebook_games.py`.
+JSON bots implement `get_action(state)`; examples live in `starter_kit/cyber_grid_bot.py`
+and `starter_kit/stellar_armada_bot.py`. See [the backend contract and documented defaults](docs/RULEBOOK_BACKEND.md)
+for game rules, API usage, replay v2 and execution limitations. The frontend selects a dedicated renderer for each replay format; see [frontend flows and verification](docs/FRONTEND.md).

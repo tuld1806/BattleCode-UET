@@ -6,7 +6,7 @@
 <div class="lobby-container">
   <header class="lobby-header">
     <div class="lobby-hero">
-      <div class="hero-badge">🎮 Sảnh Đa Bộ Môn</div>
+      <div class="hero-badge">Battlecode UET · AI Arena</div>
       <h1 class="hero-title">Đấu Trường Trí Tuệ Nhân Tạo</h1>
       <p class="hero-subtitle">
         Lựa chọn tựa game yêu thích, thiết kế thuật toán bot tối ưu và tranh tài trên bảng xếp hạng Elo cùng cộng đồng.
@@ -26,8 +26,12 @@
           <article class="game-card" id="game-card-{{ game.slug }}">
             <div class="game-card-header">
               <div class="game-icon">
-                {% if game.slug == 'rps-chess' %}
-                  ⚔️
+                {% if game.slug == 'cyber-grid' %}
+                  <svg viewBox="0 0 48 48" width="42" height="42" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="38" height="38" rx="4"/><path d="M5 18h38M5 30h38M18 5v38M30 5v38"/><rect x="19" y="19" width="10" height="10" fill="currentColor"/></svg>
+                {% elif game.slug == 'stellar-armada' %}
+                  <svg viewBox="0 0 48 48" width="42" height="42" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="m24 5 15 32-15-7-15 7Z"/><path d="M24 30v13M18 36l-2 7M30 36l2 7"/></svg>
+                {% elif game.slug == 'rps-chess' %}
+                  <svg viewBox="0 0 48 48" width="42" height="42" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 8h30v30H9zM9 18h30M9 28h30M19 8v30M29 8v30"/><circle cx="24" cy="23" r="4" fill="currentColor"/></svg>
                 {% elif 'chess' in game.slug %}
                   ♟️
                 {% elif 'tic' in game.slug %}
@@ -40,19 +44,20 @@
                 <h3 class="game-title">{{ game.display_name }}</h3>
                 <span class="game-slug">{{ game.slug }}</span>
               </div>
-              <span class="status-tag active">Đang mở</span>
+              <span class="status-tag active">Đã kích hoạt</span>
             </div>
 
             <div class="game-card-body">
               <p class="game-desc">
                 {{ game.description_md or "Đấu trường lập trình thuật toán bot AI với luật chơi chuẩn hóa." }}
               </p>
+              <p class="replay-hint">{% if game.slug == 'cyber-grid' %}Lưới 32–64 · Fog of War · 1000 tick{% elif game.slug == 'stellar-armada' %}Không gian 2D · Quán tính · 1200 tick{% elif game.slug == 'rps-chess' %}Bàn cờ 9×9 · 200 lượt{% endif %}</p>
             </div>
 
             <div class="game-card-footer">
               <div class="game-stats">
-                <span title="Người chơi tích cực">👥 Sẵn sàng</span>
-                <span title="Giải đấu">🏆 Giải đấu</span>
+                <span>{{ game.profiles|length }} hồ sơ</span>
+                <span>{{ game.tournaments|length }} giải đấu</span>
               </div>
               <a href="/games/{{ game.slug }}" class="btn btn-primary btn-play">
                 Khám phá &amp; Thi đấu &rarr;
@@ -72,6 +77,7 @@
 </div>
 
 <style>
+.games-count { white-space: nowrap; flex-shrink: 0; }
 .lobby-container {
   max-width: 1180px;
   margin: 0 auto;

@@ -1,8 +1,15 @@
 {% extends "base.html" %}
 
-{% block title %}Đấu trường Trực quan 9x9 (Replay Match #{{ match_id }}) - Battlecode 9x9{% endblock %}
+{% block title %}Replay Match #{{ match_id }} - Battlecode UET{% endblock %}
 
 {% block content %}
+<div class="replay-loader" id="replayLoader" role="status" aria-live="polite">
+  <p id="replayLoadMessage">Đang tải dữ liệu trận đấu…</p>
+  <button id="replayRetry" class="btn" type="button" hidden>Thử lại</button>
+  <a href="/lobby" class="btn">Về sảnh game</a>
+</div>
+{% include 'partials/tick_replay.html' %}
+<div id="legacyReplay" hidden>
 <div class="page-header">
   <div>
     <h1 class="page-title">Trực quan hóa Trận đấu #{{ match_id }} (Match Replay)</h1>
@@ -15,6 +22,7 @@
   </div>
 </div>
 
+<details class="replay-guide" open><summary>Hướng dẫn RPS Chess <span>Thu gọn / mở hướng dẫn</span></summary><div class="guide-steps"><article><h3>01 · Về đích</h3><p>Đưa quân đến góc đích của đối thủ: đỏ hướng tới i9, xanh hướng tới a1.</p></article><article><h3>02 · Khắc chế</h3><p>Búa thắng Kéo · Kéo thắng Bao · Bao thắng Búa. Quan sát loại quân trước khi tiến vào giao tranh.</p></article><article><h3>03 · Xem replay</h3><p>Nhấn Phát hoặc dùng nút Tiến / Lùi để xem từng nước. Đây là trận của bot; bạn không điều khiển quân bằng chuột.</p></article></div><a href="/games/rps-chess">Đọc luật đầy đủ &amp; bắt đầu viết bot →</a></details>
 <div class="replay-layout" id="visualizerApp">
   <!-- Left Side: Player 1 (Red) & Match Info -->
   <aside class="side left">
@@ -99,31 +107,46 @@
     </div>
   </aside>
 </div>
+</div>
 {% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="/static/css/tick_replay.css">{% endblock %}
 
 {% block scripts %}
 <script src="/static/js/visualizer.js"></script>
+<script src="/static/js/tick_replay.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', async () => {
+  async function loadMatchReplay() {
     const matchId = {{ match_id | tojson }};
-    const visualizer = new ReplayVisualizer({ matchId: matchId, replayUrl: {{ replay_url | default(none) | tojson }} });
-
-    // Update player names from match replay once fetched
+    const url = {{ replay_url | default(none) | tojson }} || `/api/matches/${matchId}/replay`;
+    const loader = document.getElementById('replayLoader');
+    const message = document.getElementById('replayLoadMessage');
+    const retry = document.getElementById('replayRetry');
+    retry.hidden = true;
+    message.textContent = 'Đang tải dữ liệu trận đấu…';
     try {
-      if (typeof matchId !== 'number') return;
-      const res = await fetch(`/api/matches/${matchId}`);
-      if (res.ok) {
-        const m = await res.json();
-        if (m.player1) {
-          document.getElementById('p1Name').textContent = m.player1.username;
-        }
-        if (m.player2) {
-          document.getElementById('p2Name').textContent = m.player2.username;
-        }
+      const response = await fetch(url);
+      const data = await response.json();
+      if (!response.ok) throw new Error(response.status === 404 ? 'Replay chưa có. Trận có thể đang chờ/chạy hoặc chưa lưu replay. Hãy thử lại sau.' : (data.detail || 'Không tải được replay.'));
+      if (data.replay_version === 2) {
+        window.activeReplay = new TickReplay(data);
+      } else if (data.replay_version == null || data.replay_version === 1) {
+        document.getElementById('legacyReplay').hidden = false;
+        window.activeReplay = new ReplayVisualizer({matchId, replayData: data});
+      } else {
+        throw new Error('Phiên bản replay chưa được hỗ trợ.');
       }
+      loader.hidden = true;
     } catch (err) {
-      console.warn('Could not fetch match summary details:', err);
+      document.getElementById('tickReplay').hidden = true;
+      document.getElementById('legacyReplay').hidden = true;
+      message.textContent = err.message;
+      retry.hidden = false;
     }
+  }
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('replayRetry').addEventListener('click', loadMatchReplay);
+    loadMatchReplay();
   });
 </script>
 {% endblock %}

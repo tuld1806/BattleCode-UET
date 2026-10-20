@@ -123,14 +123,18 @@
                 {% set my_elo_before = m.p1_elo_before if is_p1 else m.p2_elo_before %}
                 {% set my_elo_after = m.p1_elo_after if is_p1 else m.p2_elo_after %}
                 {% set won = (m.winner_id == target_user.id) %}
-                {% set is_draw = (m.winner_id is none and m.win_reason == 'draw') %}
+                {% set is_draw = (m.winner_id is none and m.win_reason and not m.win_reason.startswith('Execution error:')) %}
                 <tr>
                   <td style="color: var(--text-muted);">#{{ m.id }}</td>
                   <td>
                     <strong>{{ opponent.username if opponent else 'Unknown' }}</strong>
                   </td>
                   <td style="text-align: center;">
-                    {% if won %}
+                    {% if not m.win_reason %}
+                      <span class="badge">Đang chờ / đang chạy</span>
+                    {% elif m.win_reason.startswith('Execution error:') %}
+                      <span class="badge">Lỗi thực thi</span>
+                    {% elif won %}
                       <span class="badge" style="background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid rgba(63, 185, 80, 0.3);">
                         Thắng
                       </span>
@@ -159,7 +163,7 @@
                   <td style="text-align: center; color: var(--text-muted);">{{ m.total_turns or 0 }}</td>
                   <td style="text-align: center;">
                     {% if m.replay_path %}
-                      <a href="/replay?match_id={{ m.id }}" class="btn btn-sm btn-outline" style="padding: 2px 8px; font-size: 12px;">
+                      <a href="/replay/{{ m.id }}" class="btn btn-sm btn-outline" style="padding: 2px 8px; font-size: 12px;">
                         Replay
                       </a>
                     {% else %}
@@ -198,7 +202,7 @@
     if (chartContainer && window.RatingChart) {
       var userId = {{ target_user.id }};
       var gameSlug = {{ game.slug | tojson }};
-      window.RatingChart.fetchAndRender('user-game-rating-chart', userId, gameSlug, {
+      window.RatingChart.fetchAndRender('user-game-rating-chart', '/api/games/' + encodeURIComponent(gameSlug) + '/users/' + userId + '/rating-history', null, {
         height: 280,
         title: 'Lịch sử Elo ' + {{ game.display_name | tojson }}
       });

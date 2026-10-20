@@ -1,0 +1,8 @@
+slug: stellar-armada
+display_name: "Stellar Armada: Vector Protocols"
+description_md: "Deterministic fleet tactics with inertia, mining, lasers and torpedoes."
+bot_interface: json_state
+timeout_ms: 50
+time_bank_ms: 2000
+memory_limit_mb: 256
+max_turns: 1200

@@ -94,6 +94,12 @@ def execute_match_job(
             "match_id": match_id,
         }
 
+        # Select the registered engine rather than silently executing all games as RPS.
+        from server.game_registry import GameRegistry
+        selected_game = db.get(Game, match.game_id or 1)
+        selected_engine = None
+        if selected_game and selected_game.slug != "rps-chess":
+            selected_engine = GameRegistry.get_instance().load_engine(selected_game.slug, db)
         # Run match in isolated worker processes
         match_result = run_match(
             bot1_path=bot1_path,
@@ -102,6 +108,7 @@ def execute_match_job(
             timeout_per_turn=timeout_seconds,
             player1_info=p1_meta,
             player2_info=p2_meta,
+            engine=selected_engine,
         )
 
         # Save replay JSON
@@ -139,12 +146,12 @@ def execute_match_job(
         # Retrieve or create per-game profiles for both players
         profile1 = db.query(GameProfile).filter(GameProfile.user_id == player1.id, GameProfile.game_id == game_id).first()
         if not profile1:
-            profile1 = GameProfile(user_id=player1.id, game_id=game_id, elo=player1.elo)
+            profile1 = GameProfile(user_id=player1.id, game_id=game_id, elo=player1.elo if game_id == 1 else 1200)
             db.add(profile1)
             db.commit()
         profile2 = db.query(GameProfile).filter(GameProfile.user_id == player2.id, GameProfile.game_id == game_id).first()
         if not profile2:
-            profile2 = GameProfile(user_id=player2.id, game_id=game_id, elo=player2.elo)
+            profile2 = GameProfile(user_id=player2.id, game_id=game_id, elo=player2.elo if game_id == 1 else 1200)
             db.add(profile2)
             db.commit()
         # Set initial Elo values, respecting any pre-set bracket Elo values
@@ -154,6 +161,7 @@ def execute_match_job(
         else:
             r1 = profile1.elo
             r2 = profile2.elo
+        match.p1_elo_before, match.p2_elo_before = r1, r2
         # Update Elo ratings for non-bracket matches using GameProfile
         if not match.is_bracket:
             if winner_code == 1:
@@ -174,8 +182,9 @@ def execute_match_job(
             profile1.elo = new_r1
             profile2.elo = new_r2
             # Also update global User Elo for leaderboard
-            player1.elo = new_r1
-            player2.elo = new_r2
+            if game_id == 1:
+                player1.elo = new_r1
+                player2.elo = new_r2
             match.p1_elo_after = new_r1
             match.p2_elo_after = new_r2
         else:

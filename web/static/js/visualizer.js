@@ -172,6 +172,7 @@ class ReplayVisualizer {
 
     // Keyboard navigation shortcuts
     window.addEventListener('keydown', (e) => {
+      if (e.target.closest('input, select, textarea, button, [contenteditable="true"]')) return;
       if (['ArrowLeft', 'KeyA'].includes(e.code)) {
         this.stepBackward();
       } else if (['ArrowRight', 'KeyD'].includes(e.code)) {

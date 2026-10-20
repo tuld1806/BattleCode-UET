@@ -1,0 +1,8 @@
+slug: cyber-grid
+display_name: "Cyber-Grid: Neon Dominion"
+description_md: "Simultaneous grid conquest with fog of war, resource nodes and destructible cores."
+bot_interface: json_state
+timeout_ms: 50
+time_bank_ms: 2000
+memory_limit_mb: 256
+max_turns: 1000

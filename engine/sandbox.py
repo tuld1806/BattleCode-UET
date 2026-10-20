@@ -221,7 +221,7 @@ class SecurityVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
-def validate_bot_source(code: str) -> tuple[bool, str | None]:
+def validate_bot_source(code: str, entrypoint: str = "get_move") -> tuple[bool, str | None]:
     """Validate Python bot source code against security and structural rules.
 
     The validation ensures:
@@ -253,14 +253,21 @@ def validate_bot_source(code: str) -> tuple[bool, str | None]:
 
     # Verify presence of top-level get_move function entrypoint
     has_get_move = any(
-        isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)) and stmt.name == "get_move"
+        isinstance(stmt, ast.FunctionDef) and stmt.name == entrypoint
         for stmt in tree.body
     )
     if not has_get_move:
-        return False, "Bot must define a top-level function 'def get_move(...)'."
+        return False, f"Bot must define a top-level function 'def {entrypoint}(...)'."
 
     visitor = SecurityVisitor()
     visitor.visit(tree)
+
+    if entrypoint == "get_action":
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import) and any(alias.name.split(".")[0] == "engine" for alias in node.names):
+                return False, "JSON bots cannot import the engine implementation."
+            if isinstance(node, ast.ImportFrom) and (node.module or "").split(".")[0] == "engine":
+                return False, "JSON bots cannot import the engine implementation."
 
     if visitor.errors:
         return False, visitor.errors[0]

@@ -2,6 +2,8 @@
 
 {% block title %}Hồ sơ & Quản lý Bot (Profile) - Battlecode 9x9{% endblock %}
 
+{% block extra_head %}<link rel="stylesheet" href="/static/css/tick_replay.css">{% endblock %}
+
 {% block content %}
 {% set display_user = target_user if (target_user is defined and target_user) else current_user %}
 {% set is_own_profile = (current_user and display_user and current_user.id == display_user.id) %}
@@ -76,7 +78,7 @@
         <div style="color: var(--text-muted);">D: <strong>{{ gp.draws }}</strong></div>
       </div>
       <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border-subtle); text-align: right;">
-        <a href="/profile/{{ current_user.id }}/games/{{ gp.game.slug if gp.game else '' }}" style="font-size: 0.82rem; color: var(--accent); text-decoration: none;">
+        <a href="/profile/{{ display_user.id }}/games/{{ gp.game.slug if gp.game else '' }}" style="font-size: 0.82rem; color: var(--accent); text-decoration: none;">
           Chi tiết thành tích &rarr;
         </a>
       </div>
@@ -86,6 +88,7 @@
 </div>
 {% endif %}
 
+{% if is_own_profile %}
 <div class="management-grid">
   <!-- Bot Upload Box -->
   <div class="card">
@@ -98,14 +101,15 @@
         <label for="botGame">Bộ môn cho bot</label>
         <select id="botGame" name="game_id" class="form-control" required>
           {% for game in available_games | default([]) %}
-          <option value="{{ game.id }}">{{ game.display_name }}</option>
+          <option value="{{ game.id }}" data-slug="{{ game.slug }}">{{ game.display_name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="drop-zone" id="dropZone" onclick="document.getElementById('botFileInput').click()">
+      <p id="botGameHelp" class="game-help" role="status"></p>
+      <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Chọn file bot Python" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('botFileInput').click()}" onclick="document.getElementById('botFileInput').click()">
         <div class="drop-icon">📤</div>
         <div class="drop-text">Kéo thả file bot .py vào đây hoặc nhấp để chọn</div>
-        <div class="drop-sub">File mã nguồn Python chứa hàm <code>get_move(board, my_player, history)</code></div>
+        <div class="drop-sub">File Python UTF-8 đúng giao thức của bộ môn đã chọn.</div>
         <div id="selectedFileName" style="margin-top: 10px; font-weight: 700; color: var(--accent);"></div>
       </div>
 
@@ -141,6 +145,7 @@
           <tr>
             <td>
               <strong>{{ bot.filename }}</strong>
+              <div>{{ bot.game.display_name if bot.game else 'RPS Chess 9×9' }}</div>
               <div style="color: var(--muted); font-size: 11px;">{{ bot.uploaded_at }}</div>
             </td>
             <td>
@@ -174,11 +179,12 @@
 </div>
 
 <!-- User Rating Trajectory Chart -->
+{% endif %}
 <div id="user-rating-chart-card" class="chart-card" style="margin-bottom: 24px;">
   <div class="chart-header">
     <h2 class="chart-title">Biến động Elo cá nhân</h2>
   </div>
-  <div id="user-rating-chart-container" data-url="/api/users/{{ current_user.id }}/rating-history?limit=50"></div>
+  <div id="user-rating-chart-container" data-url="/api/users/{{ display_user.id }}/rating-history?limit=50"></div>
 </div>
 
 <!-- Recent Matches History -->
@@ -211,7 +217,11 @@
             <strong style="color: var(--p2);">{{ match.player2.username if match.player2 else 'P2' }}</strong>
           </td>
           <td>
-            {% if match.winner_id == current_user.id %}
+            {% if not match.win_reason %}
+              <span class="tag">Đang chờ / đang chạy</span>
+            {% elif match.win_reason.startswith('Execution error:') %}
+              <span class="tag">Lỗi thực thi</span>
+            {% elif match.winner_id == display_user.id %}
               <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Thắng ({{ match.win_reason }})</span>
             {% elif match.winner_id is none %}
               <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
@@ -219,7 +229,7 @@
               <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Thua ({{ match.win_reason }})</span>
             {% endif %}
           </td>
-          <td>{{ match.total_turns }} lượt</td>
+          <td>{{ match.total_turns }} {{ 'tick' if match.game and match.game.slug in ['cyber-grid', 'stellar-armada'] else 'lượt' }}</td>
           <td style="color: var(--muted); font-size: 12px;">{{ match.created_at or '' }}</td>
           <td style="text-align: right;">
             <a href="/replay/{{ match.id }}" class="btn btn-sm btn-primary">
@@ -243,6 +253,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/profile_games.js"></script>
 <script src="/static/js/rating_chart.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', async function () {

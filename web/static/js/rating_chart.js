@@ -478,9 +478,17 @@
       if (res.ok) {
         var data = await res.json();
         render(containerId, data, options);
-      }
+      } else { throw new Error('Không tải được lịch sử Elo.'); }
     } catch (err) {
       console.error('Failed to fetch rating history:', err);
+      var mount = typeof containerId === 'string' ? document.getElementById(containerId) : containerId;
+      if (mount) {
+        var message = document.createElement('p');
+        message.setAttribute('role', 'status'); message.textContent = 'Không tải được lịch sử Elo. Bạn có thể thử lại.';
+        var retry = document.createElement('button'); retry.className = 'btn'; retry.textContent = 'Thử tải lại biểu đồ';
+        retry.addEventListener('click', function () { mount.textContent = 'Đang tải lịch sử Elo…'; fetchAndRender(containerId, target, gameSlug, options); });
+        mount.replaceChildren(message, retry);
+      }
     }
   }
 

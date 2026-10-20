@@ -1,0 +1,1 @@
+"""Stellar Armada game plugin."""

@@ -3,7 +3,7 @@
 {% block title %}{{ game.display_name }} — BattleCode-UET Platform{% endblock %}
 
 {% block content %}
-<div class="game-detail-container">
+<div class="game-detail-container" id="gamePortal" data-game-id="{{ game.id }}" data-slug="{{ game.slug }}" data-user-id="{{ current_user.id if current_user else '' }}" data-player="{{ 'true' if current_user and not current_user.is_admin else 'false' }}">
   <!-- Game Header Banner -->
   <header class="game-hero">
     <div class="game-hero-content">
@@ -29,6 +29,7 @@
     <button class="tab-btn" onclick="switchTab('tab-tournaments')" id="btn-tab-tournaments">
       ⚔️ Giải Đấu ({{ tournaments|length }})
     </button>
+    <button class="tab-btn" onclick="switchTab('tab-matches')" id="btn-tab-matches">Trận đấu &amp; Replay</button>
   </nav>
 
   <!-- Tab 1: Rules -->
@@ -43,6 +44,9 @@
           <p>{{ game.description_md or "Bộ môn thi đấu lập trình bot AI chính thức trên nền tảng BattleCode-UET." }}</p>
         </div>
 
+        {% if game.slug in ['cyber-grid', 'stellar-armada'] %}
+        {% include 'partials/rulebook_game.html' %}
+        {% else %}
         <div class="api-spec-box">
           <h3>🤖 Giao thức Bot API Signature</h3>
           <p>Bot của bạn cần triển khai hàm quyết định nước đi chuẩn hóa sau:</p>
@@ -68,6 +72,7 @@
             <p>Đỏ thắng khi tới i9, Xanh thắng khi tới a1; hoặc loại hết một loại quân của đối thủ. Sau 200 lượt, bên còn nhiều quân hơn thắng; bằng nhau thì hòa.</p>
             <p>Bot trả về <code>((from_row, from_col), (to_row, to_col))</code>, chỉ số hàng/cột từ 0 đến 8.</p>
             <a href="/profile" class="btn btn-primary">Nộp bot của bạn</a>
+            <button class="btn" id="downloadGameBot">Tải bot mẫu .py</button>
           </div>
           {% endif %}
           <div class="rule-box">
@@ -79,6 +84,7 @@
             <p>Bot thực thi trong tiến trình subprocess cô lập, nghiêm cấm các lệnh truy cập file ngoài hoặc kết nối mạng.</p>
           </div>
         </div>
+        {% endif %}
       </div>
     </div>
   </section>
@@ -199,6 +205,21 @@
           </div>
         {% endif %}
       </div>
+    </div>
+  </section>
+  <section class="tab-pane" id="tab-matches">
+    <div class="card game-matches">
+      <h2>Thách đấu theo bộ môn</h2>
+      {% if current_user and not current_user.is_admin %}
+      <form id="gameChallengeForm" class="replay-toolbar"><label for="gameOpponent">Đối thủ</label><select id="gameOpponent" class="form-control" required><option value="">Đang tải đối thủ…</option></select><button class="btn btn-primary" type="submit">Gửi thách đấu</button></form>
+      <p class="replay-hint">Hai người cần bot active của bộ môn này. Cổng FFA phải đang mở; thông báo từ máy chủ sẽ cho biết nếu chưa thể thi đấu.</p>
+      {% elif not current_user %}<p><a href="/login">Đăng nhập</a> và <a href="/profile?game={{ game.slug }}">nộp bot</a> để thách đấu.</p>
+      {% else %}<p class="replay-hint">Tài khoản quản trị theo dõi trận đấu, không tham gia thi đấu.</p>{% endif %}
+      <p id="gameChallengeStatus" role="status" aria-live="polite"></p>
+      <div class="replay-toolbar"><h3>Lịch sử trận đấu</h3><button id="refreshGameMatches" class="btn">Làm mới</button></div>
+      <p id="gameMatchesStatus" role="status" aria-live="polite"></p>
+      <div class="table-responsive"><table class="table"><thead><tr><th>Trận</th><th>Đỏ</th><th>Xanh</th><th>Kết quả</th><th>Tick / lượt</th><th>Xem lại</th></tr></thead><tbody id="gameMatchesBody"></tbody></table></div>
+      <button id="moreGameMatches" class="btn">Tải thêm trận trước</button>
     </div>
   </section>
 </div>
@@ -425,6 +446,7 @@ function switchTab(targetId) {
   const targetBtn = document.getElementById('btn-' + targetId);
   if (targetPane) targetPane.classList.add('active');
   if (targetBtn) targetBtn.classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(button => button.setAttribute('aria-selected', String(button === targetBtn)));
   if (targetId === 'tab-leaderboard' && !ratingLoaded) {
     RatingChart.fetchAndRender('game-rating-chart', '/api/games/{{ game.slug }}/rating-history');
     ratingLoaded = true;
@@ -454,4 +476,7 @@ async function enrollTournament(gameSlug, tourneyId) {
 
 {% block scripts %}
 <script src="/static/js/rating_chart.js"></script>
+<script src="/static/js/game_portal.js"></script>
 {% endblock %}
+
+{% block extra_head %}<link rel="stylesheet" href="/static/css/tick_replay.css">{% endblock %}

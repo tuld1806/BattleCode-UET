@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from server.database import get_db
-from server.models import Bot, Match, TournamentSetting, User
+from server.models import Bot, Game, GameProfile, Match, TournamentSetting, User
 from server.queue import execute_match_job
 from server.routes.auth import get_current_user
 from server.tournament import is_ffa_portal_open
@@ -23,6 +23,7 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 class ChallengeRequest(BaseModel):
     """Pydantic payload for initiating an FFA challenge match."""
     opponent_id: int
+    game_id: int = 1
 
 
 def _is_portal_open_now(db: Session) -> bool:
@@ -40,6 +41,8 @@ def _serialize_match(m: Match) -> Dict[str, Any]:
     """Serialize a Match SQLAlchemy entity to a dictionary."""
     return {
         "id": m.id,
+        "game_id": m.game_id,
+        "tournament_id": m.tournament_id,
         "player1_id": m.player1_id,
         "player2_id": m.player2_id,
         "player1": {"id": m.player1.id, "username": m.player1.username} if m.player1 else None,
@@ -98,10 +101,14 @@ def challenge_opponent(
             detail="FFA portal is currently closed for ranked matches.",
         )
 
-    # Verify both users have active bot submissions
+    game = db.get(Game, payload.game_id)
+    if not game or not game.is_active:
+        raise HTTPException(status_code=400, detail="Game not found or inactive")
+    scope = or_(Bot.game_id == game.id, Bot.game_id.is_(None)) if game.slug == "rps-chess" else Bot.game_id == game.id
+    # Verify both users have active submissions for the selected game.
     bot1 = (
         db.query(Bot)
-        .filter(Bot.user_id == current_user.id, Bot.is_active == True)  # noqa: E712
+        .filter(Bot.user_id == current_user.id, Bot.is_active == True, scope)  # noqa: E712
         .first()
     )
     if not bot1:
@@ -112,7 +119,7 @@ def challenge_opponent(
 
     bot2 = (
         db.query(Bot)
-        .filter(Bot.user_id == opponent.id, Bot.is_active == True)  # noqa: E712
+        .filter(Bot.user_id == opponent.id, Bot.is_active == True, scope)  # noqa: E712
         .first()
     )
     if not bot2:
@@ -123,6 +130,7 @@ def challenge_opponent(
 
     # Create pending Match record
     match = Match(
+        game_id=game.id,
         player1_id=current_user.id,
         player2_id=opponent.id,
         bot1_id=bot1.id,

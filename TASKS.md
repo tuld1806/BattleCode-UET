@@ -251,3 +251,14 @@
 - [x] Connect BO3 replay pages and game rating history; improve small-screen layout and keyboard focus.
 - [x] Verify upload isolation and BO3 replay routes with regression tests.
 - Local review: branch v2; run `.venv/Scripts/python.exe main.py --host 127.0.0.1 --port 8000`.
+
+## Rulebook backend (2026-10-20)
+
+- [x] Cyber-Grid plugin: grid movement, collision, combat, Fog, economy and win checks.
+- [x] Stellar Armada plugin: vector physics, collisions, lasers, torpedoes, mining and ship production.
+- [x] JSON bot runner, CPU time bank, process memory limits and replay v2.
+- [x] Registration command, game-scoped upload/challenge dispatch and per-game Elo persistence.
+- [x] Regression tests for rules, malformed actions, real subprocesses and API integration.
+- [x] Document defaults and security/resource limitations in `docs/RULEBOOK_BACKEND.md`.
+- [x] Frontend renderers for replay v2, game-specific instructions, challenge/history UI and public-profile fixes.
+- [ ] Tournament-scoped bracket integration (separate backend scope).

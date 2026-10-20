@@ -1,0 +1,57 @@
+<section id="tickReplay" class="tick-replay" hidden aria-label="Phát lại trận đấu theo tick">
+  <div class="replay-heading">
+    <div><span class="eyebrow" id="tickGameLabel"></span><h1 id="tickMatchTitle">Bản đồ trận đấu</h1></div>
+    <a href="/lobby" class="btn" id="tickBack">Về bộ môn</a>
+  </div>
+  <p id="tickResult" class="replay-result" role="status"></p>
+  <details class="replay-guide" open>
+    <summary>Hướng dẫn chơi &amp; xem trận <span>Thu gọn / mở hướng dẫn</span></summary>
+    <p>Bạn viết bot để điều khiển đội quân. Đây là trận đã diễn ra; nhấp vào quân để xem thông tin.</p>
+    <div id="tickGuide" class="guide-steps"></div>
+    <div class="guide-footer"><a id="tickRules" href="/lobby">Xem luật chi tiết &amp; tải bot mẫu →</a><span>Nhấn Phát để bắt đầu · Kéo thanh thời gian để xem lại bất kỳ thời điểm nào.</span></div>
+  </details>
+  <div class="team-huds">
+    <article class="team-hud team-one"><h3 id="tickTeam1">Đội 1</h3><div id="tickStats1" class="hud-stats"></div></article>
+    <article class="team-hud team-two"><h3 id="tickTeam2">Đội 2</h3><div id="tickStats2" class="hud-stats"></div></article>
+  </div>
+  <div class="replay-workspace">
+    <div class="replay-map-panel">
+      <div class="replay-toolbar">
+        <label>Góc nhìn <select id="tickPerspective"><option value="0">Toàn bản đồ</option><option value="1">Đội 1</option><option value="2">Đội 2</option></select></label>
+        <label><input id="tickGrid" type="checkbox" checked> Lưới / tọa độ</label>
+        <label><input id="tickVectors" type="checkbox" checked> Hướng / vận tốc</label>
+        <label><input id="tickRange" type="checkbox"> Tầm đánh</label>
+        <button class="btn" id="tickNextCombat">Giao tranh tiếp theo</button>
+      </div>
+      <div class="tick-transport" role="group" aria-label="Điều khiển replay">
+        <div class="replay-toolbar">
+          <button class="btn" id="tickFirst" aria-label="Về tick đầu">Đầu</button><button class="btn" id="tickPrev" aria-label="Tick trước">Trước</button>
+          <button class="btn btn-primary" id="tickPlay" aria-pressed="false">Phát</button>
+          <button class="btn" id="tickNext" aria-label="Tick sau">Sau</button><button class="btn" id="tickLast" aria-label="Đến tick cuối">Cuối</button>
+          <label>Tốc độ <select id="tickSpeed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+        </div>
+        <label for="tickTimeline">Thời gian trận đấu</label>
+        <input id="tickTimeline" type="range" min="0" value="0" max="0">
+        <div class="replay-toolbar"><label for="tickNumber">Tick</label><input id="tickNumber" type="number" min="0" value="0" max="0"><span id="tickCount"></span></div>
+        <p class="replay-hint">Space: phát/dừng · ←/→: từng tick khi focus bản đồ · Kéo để di chuyển. Replay mở ở trạng thái dừng.</p>
+      </div>
+      <div class="replay-canvas-wrap">
+        <canvas id="tickCanvas" tabindex="0" aria-label="Bản đồ trận đấu. Chọn đơn vị bằng danh sách bên cạnh; dùng nút để thu phóng và di chuyển bản đồ.">Trình duyệt cần hỗ trợ Canvas. Có thể xem thông tin đơn vị trong danh sách bên cạnh.</canvas>
+        <span class="map-caption" id="tickMapCaption"></span>
+      </div>
+      <p id="tickCombatStatus" class="combat-status" role="status" aria-live="off"></p>
+      <p class="combat-key">Đường sáng → đòn đánh · −HP → máu mất trong tick · vòng cam × → va chạm / ngư lôi trúng đích. Dừng replay để xem rõ từng đòn.</p>
+      <div class="replay-toolbar camera-controls" aria-label="Điều khiển bản đồ">
+        <button class="btn" id="tickZoomOut" aria-label="Thu nhỏ bản đồ">−</button><button class="btn" id="tickZoomIn" aria-label="Phóng to bản đồ">+</button>
+        <button class="btn" id="tickFit">Toàn cảnh</button>
+        <button class="btn" data-pan="left" aria-label="Dịch bản đồ sang trái">←</button><button class="btn" data-pan="up" aria-label="Dịch bản đồ lên">↑</button><button class="btn" data-pan="down" aria-label="Dịch bản đồ xuống">↓</button><button class="btn" data-pan="right" aria-label="Dịch bản đồ sang phải">→</button>
+      </div>
+
+    </div>
+    <aside class="replay-inspector">
+      <section class="card"><h3>Đơn vị đang chọn</h3><p id="tickRole" class="unit-role">Chọn một quân hoặc tàu để xem vai trò.</p><label for="tickEntity">Chọn đối tượng đang thấy</label><select id="tickEntity"><option value="">Chọn trên bản đồ hoặc danh sách</option></select><button class="btn" id="tickFocus" disabled>Phóng tới đơn vị</button><dl id="tickDetails"><dt>Trạng thái</dt><dd>Chưa chọn đơn vị</dd></dl></section>
+      <section class="card"><h3>Đọc bản đồ</h3><p id="tickLegend"></p><p class="replay-hint">Thanh xanh trên đơn vị là máu còn lại. Vòng trắng đánh dấu đơn vị được chọn. Hình thoi trên lưới là node; khối xám là vật cản. Trong không gian, đá xám chứa Ore và chấm vàng là ngư lôi.</p><details><summary>Chi tiết tài nguyên</summary><p id="tickResources" class="replay-hint"></p></details><p class="replay-hint" id="tickVisibilityNote"></p></section>
+      <section class="card"><h3>Sự kiện tại tick <span id="tickEventNumber">0</span></h3><ol id="tickEvents" class="tick-event-list"></ol><details><summary>Lệnh bot tại tick này</summary><pre id="tickCommands" class="tick-commands"></pre></details></section>
+    </aside>
+  </div>
+</section>

@@ -1,0 +1,39 @@
+<div class="game-protocol">
+  <div class="rules-grid">
+    <div class="rule-box"><h3>{{ 'Cyber-Grid · Chiếm lĩnh mạng lưới' if game.slug == 'cyber-grid' else 'Stellar Armada · Điều khiển hạm đội' }}</h3>
+      {% if game.slug == 'cyber-grid' %}<p>Bản đồ 32–64 ô mỗi chiều. Hai đội gửi lệnh trước khi tick được xử lý đồng thời. Điều khiển Worker, Pawn, Blaster và Tower để chiếm node và phá Core đối phương.</p><p>Core tạo +10 Data/tick, mỗi node +5 Data/tick. Worker đứng trên node để chiếm quyền. Fog giới hạn thông tin bot nhận được.</p>
+      {% else %}<p>Không gian liên tục 1000×1000. Điều khiển hướng, lực đẩy và quán tính để khai thác asteroid, xây hạm đội và phá Flagship đối phương.</p><p>Miner lấy tối đa 100 Ore, khai thác khi cách asteroid &lt;30 và nộp quặng khi cách Flagship &lt;50. Fighter dùng laser; Frigate phóng ngư lôi.</p>{% endif %}
+    </div>
+    <div class="rule-box"><h3>Ngân sách và điều kiện thắng</h3><p>50ms CPU/tick + Time Bank 2000ms cho cả trận; giới hạn bộ nhớ tiến trình 256MiB.</p>
+      {% if game.slug == 'cyber-grid' %}<p>Phá Core để thắng. Hết 1000 tick: điểm = node×100 + HP quân còn sống + Data/10.</p>{% else %}<p>Phá Flagship để thắng. Hết 1200 tick: engine hiện tại dùng tổng HP tàu + Ore trong kho/10.</p>{% endif %}
+      <p class="replay-hint">Giá trị bổ sung theo mặc định engine hiện tại; hai căn cứ bị phá cùng tick hoặc bằng điểm thì hòa.</p>
+    </div>
+  </div>
+  <h3>Đơn vị và chỉ số</h3><div class="table-responsive"><table class="table"><thead><tr><th>Loại</th><th>HP</th>{% if game.slug == 'cyber-grid' %}<th>ATK</th><th>Range / Vision</th><th>Data</th>{% else %}<th>Khối lượng</th><th>Lực đẩy tối đa</th><th>Vai trò</th>{% endif %}</tr></thead><tbody>
+    {% if game.slug == 'cyber-grid' %}
+    {% for type, hp, atk, range, cost in [('Worker',50,5,'1 / 5',50),('Pawn',120,25,'1 / 3',100),('Blaster',80,35,'3 / 4',150),('Tower',300,40,'4 / 4',200)] %}<tr><td>{{ type }}</td><td>{{ hp }}</td><td>{{ atk }}</td><td>{{ range }}</td><td>{{ cost }}</td></tr>{% endfor %}
+    {% else %}
+    {% for type, hp, mass, thrust, role in [('Flagship',2000,500,10,'Căn cứ / xây tàu'),('Fighter',100,20,15,'Laser tầm 80'),('Miner',150,50,5,'Khai thác Ore'),('Torpedo Frigate',400,150,4,'Ngư lôi tầm 300')] %}<tr><td>{{ type }}</td><td>{{ hp }}</td><td>{{ mass }}</td><td>{{ thrust }}</td><td>{{ role }}</td></tr>{% endfor %}
+    {% endif %}
+  </tbody></table></div>
+  <h3>Bot API · Python nhận và trả dữ liệu JSON</h3><p>Gửi file <code>.py</code> có hàm <code>get_action(state)</code>. Runner truyền observation vào hàm; không tự đọc stdin và không dùng <code>get_move</code> của RPS.</p>
+  {% if game.slug == 'cyber-grid' %}<pre><code>def get_action(state):
+    # state: tick, seed, team_id, resources, units, visible_nodes
+    # Return at most one command of each action type per unit.
+    return {"commands": []}
+
+# Command examples (use IDs from the current observation):
+# {"unit_id": 101, "action": "MOVE", "direction": "EAST"}
+# {"unit_id": 102, "action": "ATTACK", "target_id": 201}
+# {"unit_id": 101, "action": "SPAWN", "unit_type": "PAWN", "direction": "NORTH"}</code></pre>
+  {% else %}<pre><code>def get_action(state):
+    # state: tick, seed, team_id, ore_reserves, my_ships, enemy_ships, asteroids
+    return {"ship_commands": [], "build_commands": []}
+
+# Ship command example (use a ship ID from state["my_ships"]):
+# {"ship_id": "FIGHTER-1", "thrust": 12.5, "rotate_to": 0.78,
+#  "fire_weapon": True, "target_position": {"x": 310.0, "y": 480.2}}
+# Build command: {"builder_id": "FLAGSHIP-1", "build_type": "FIGHTER"}</code></pre>{% endif %}
+  <div class="replay-toolbar"><a href="/profile?game={{ game.slug }}" class="btn btn-primary">Nộp bot cho game này</a><button class="btn" id="downloadGameBot">Tải bot mẫu .py</button></div>
+  <p class="replay-hint">Bot mẫu chỉ đứng yên để kiểm tra giao thức. Dùng seed từ observation cho thuật toán ngẫu nhiên. Lệnh sai hoặc bot lỗi có thể bị xử thua; không truy cập hệ thống file/mạng.</p>
+</div>

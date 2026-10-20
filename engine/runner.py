@@ -23,6 +23,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 from typing import Any
 import uuid
 
@@ -92,10 +93,14 @@ def _run_worker(bot_path_str: str) -> None:
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     bot_dir = str(bot_path.parent)
-    if bot_dir not in sys.path:
+    if bot_dir not in sys.path and os.environ.get("BATTLECODE_BOT_INTERFACE") != "json_state":
         sys.path.insert(0, bot_dir)
 
     try:
+        memory_job = None
+        if os.environ.get("BATTLECODE_BOT_INTERFACE") == "json_state":
+            from engine.resource_limits import limit_memory
+            memory_job = limit_memory()
         if not bot_path.is_file():
             raise FileNotFoundError(f"Bot script not found: {bot_path}")
 
@@ -107,10 +112,11 @@ def _run_worker(bot_path_str: str) -> None:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        bot_fn = getattr(module, "get_move", None)
+        entrypoint = "get_action" if os.environ.get("BATTLECODE_BOT_INTERFACE") == "json_state" else "get_move"
+        bot_fn = getattr(module, entrypoint, None)
         if not callable(bot_fn):
             raise AttributeError(
-                f"Bot file '{bot_path.name}' does not define a callable 'get_move' function."
+                f"Bot file '{bot_path.name}' does not define a callable '{entrypoint}' function."
             )
 
         # Notify parent orchestrator that the bot has loaded successfully
@@ -139,9 +145,18 @@ def _run_worker(bot_path_str: str) -> None:
             history = req["history"]
 
             # Invoke bot get_move function
-            move = bot_fn(board, my_player, history)
+            started_cpu = time.process_time()
+            if os.environ.get("BATTLECODE_BOT_INTERFACE") == "json_state":
+                if not getattr(bot_fn, "_seeded", False):
+                    import random
+                    random.seed(board["seed"])
+                    bot_fn._seeded = True
+                move = bot_fn(board)
+            else:
+                move = bot_fn(board, my_player, history)
+            cpu_ms = (time.process_time() - started_cpu) * 1000
 
-            ipc_out.write(json.dumps({"status": "ok", "move": move}) + "\n")
+            ipc_out.write(json.dumps({"status": "ok", "move": move, "cpu_ms": cpu_ms}, allow_nan=False) + "\n")
             ipc_out.flush()
         except Exception as exc:
             ipc_out.write(
@@ -157,7 +172,7 @@ def _run_worker(bot_path_str: str) -> None:
 class BotProcess:
     """Manages lifecycle and turn execution of an isolated bot subprocess."""
 
-    def __init__(self, bot_path: str | Path, timeout: float = 1.0) -> None:
+    def __init__(self, bot_path: str | Path, timeout: float = 1.0, protocol: str = "python_function") -> None:
         """Initialize BotProcess manager.
 
         Args:
@@ -166,6 +181,8 @@ class BotProcess:
         """
         self.bot_path = Path(bot_path).resolve()
         self.timeout = timeout
+        self.protocol = protocol
+        self.last_cpu_ms = 0.
         self.proc: subprocess.Popen[str] | None = None
         self._queue: queue.Queue[str | None] = queue.Queue()
         self._reader_thread: threading.Thread | None = None
@@ -185,6 +202,7 @@ class BotProcess:
 
         repo_root = Path(__file__).resolve().parent.parent
         env = os.environ.copy()
+        env["BATTLECODE_BOT_INTERFACE"] = self.protocol
         python_path = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = (
             f"{repo_root}{os.pathsep}{python_path}" if python_path else str(repo_root)
@@ -345,6 +363,7 @@ class BotProcess:
             return False, None, f"Malformed response from bot: {line}", "error"
 
         if data.get("status") == "ok":
+            self.last_cpu_ms = data.get("cpu_ms", 0.)
             return True, data.get("move"), None, None
         else:
             self.kill()
@@ -404,6 +423,9 @@ def run_match(
     if engine is None:
         from games.rps_chess.engine import RPSChessEngine
         engine = RPSChessEngine(max_turns=max_turns)
+    if getattr(engine, "bot_interface", None) == "json_state":
+        from engine.tick_runner import run_tick_match
+        return run_tick_match(bot1_path, bot2_path, engine, player1_info, player2_info)
 
     match_id = (
         str(player1_info.get("match_id"))

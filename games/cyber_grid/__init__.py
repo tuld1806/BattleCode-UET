@@ -1,0 +1,1 @@
+"""Cyber-Grid game plugin."""

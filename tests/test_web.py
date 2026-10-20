@@ -11,6 +11,54 @@ from server.models import Bot, Match, TournamentSetting, User
 from server.routes.auth import ACTIVE_SESSIONS
 
 
+@pytest.mark.parametrize('slug,display_name,expected', [
+    ('cyber-grid', 'Cyber-Grid', 'visible_nodes'),
+    ('stellar-armada', 'Stellar Armada', 'ship_commands'),
+])
+def test_rulebook_game_page_uses_json_protocol_and_game_match_portal(client, slug, display_name, expected):
+    """New game pages must not teach the RPS entrypoint or one-second limit."""
+    from server.models import Game
+    with SessionLocal() as db:
+        db.add(Game(slug=slug, display_name=display_name, is_active=True))
+        db.commit()
+    page = client.get('/games/' + slug)
+    assert page.status_code == 200
+    assert 'def get_action(state)' in page.text and expected in page.text
+    assert 'def get_move(board' not in page.text
+    assert '50ms CPU/tick' in page.text
+    assert 'gameMatchesBody' in page.text and 'data-game-id=' in page.text
+    assert '/static/js/game_portal.js' in page.text
+
+
+def test_replay_page_dispatches_by_data_version_and_has_recovery_ui(client):
+    """A pending replay must have an error/retry path rather than show an empty RPS board."""
+    page = client.get('/replay/123')
+    assert page.status_code == 200
+    assert 'replayRetry' in page.text and 'replay_version === 2' in page.text
+    assert 'tickPerspective' in page.text and 'tickCanvas' in page.text
+    assert 'id="legacyReplay" hidden' in page.text
+
+
+def test_game_profile_uses_scoped_rating_endpoint_and_real_replay_link(client):
+    """Profile navigation must use path routes and game-scoped history APIs."""
+    from server.models import Game, GameProfile
+    with SessionLocal() as db:
+        game, user = Game(slug='stellar-armada', display_name='Stellar Armada'), User(username='ui_profile_reader')
+        opponent = User(username='ui_opponent')
+        db.add_all([game, user, opponent]); db.commit()
+        db.add(GameProfile(user_id=user.id, game_id=game.id))
+        match = Match(player1_id=user.id, player2_id=opponent.id, game_id=game.id, replay_path='fixture.json', win_reason='max_ticks')
+        db.add(match); db.commit()
+        uid, mid = user.id, match.id
+    page = client.get(f'/profile/{uid}/games/stellar-armada')
+    assert page.status_code == 200
+    assert f'href="/replay/{mid}"' in page.text
+    assert '/api/games/' in page.text and '/rating-history' in page.text
+    public = client.get(f'/profile/{uid}')
+    assert 'id="uploadBotForm"' not in public.text
+    assert f'/profile/{uid}/games/stellar-armada' in public.text
+
+
 def test_upload_assigns_game_and_preserves_other_game_bot(client, tmp_path, monkeypatch):
     """A submission must remain scoped to its game and support tournament enrollment."""
     from server.database import seed_default_game

@@ -11,13 +11,13 @@
   <a class="skip-link" href="#main-content">Đến nội dung chính</a>
   <nav class="navbar">
     <a href="/" class="nav-brand">
-      <span>⚔️ Battlecode 9x9</span>
-      <span class="brand-badge">RPS Chess</span>
+      <span>Battlecode UET</span>
+      <span class="brand-badge">AI Arena</span>
     </a>
 
     <ul class="nav-links">
       <li><a href="/lobby" class="{% if request.url.path == '/lobby' %}active{% endif %}">Sảnh Game (Lobby)</a></li>
-      <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Leaderboard</a></li>
+      <li><a href="/games/rps-chess#tab-leaderboard" title="Bảng xếp hạng RPS Chess; chọn bộ môn khác trong sảnh game">Leaderboard</a></li>
       <li><a href="/bracket" class="{% if request.url.path == '/bracket' %}active{% endif %}">Bracket</a></li>
       <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>
       {% if current_user and current_user.is_admin %}

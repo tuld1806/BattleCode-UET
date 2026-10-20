@@ -423,3 +423,19 @@ ps_chess_9x9 (game_id=1).
 - BO3 replay pages use `/replay/bracket_{bracket_id}_game_{game_number}` and the constrained JSON endpoint `/api/bracket-replays/{bracket_id}/{game_number}`. Missing replay artifacts return 404, including walkovers without saved games. Game two displays swapped seats.
 - Game detail includes RPS rules and game-scoped Elo history. Shared styles support responsive administration grids, keyboard focus and reduced motion.
 - Remaining backend integration limitation: FFA challenges still use the legacy game selection, and bracket records are global rather than tournament-scoped. These are not resolved by the UI completion.
+
+## Rulebook backend implementation (2026-10-20)
+
+- Added bundled `cyber-grid` and `stellar-armada` engines with simultaneous tick resolution, JSON command validation and versioned full-state replay (`replay_version=2`).
+- JSON bots implement `get_action(state)`; RPS retains `get_move(board, my_player, history)`. Upload validation selects the entrypoint from registered game metadata.
+- Match challenges accept optional `game_id` (default 1), choose game-scoped active bots, and dispatch through GameRegistry. Tick games use 50ms CPU per call plus a 2000ms time bank and a 256MiB process memory ceiling with platform-specific enforcement.
+- Explicit registration: `python scripts/register_rulebook_games.py`; no automatic tournament creation or schema migration.
+- Full contract, documented rulebook defaults, runtime limitations and frontend replay-v2 requirements: [RULEBOOK_BACKEND.md](RULEBOOK_BACKEND.md).
+- Replay dispatch now selects a dedicated tick renderer for the new games; RPS keeps its legacy renderer. Bracket isolation and per-tournament matchmaking remain separate integration work.
+
+## Multi-game frontend completion (2026-10-20)
+
+- `web/templates/replay.html` dispatches legacy RPS replays and v2 tick replays; Canvas viewers implement Cyber-Grid Fog and Stellar continuous-space maps with transport controls, camera, inspector, event/command panels and resource summaries.
+- Game detail now has game-specific Bot API instructions, downloadable starter bots, and a Matches tab using existing challenge/match APIs. Profile guidance follows the selected game; per-game history charts use scoped endpoints.
+- Public profiles no longer show bot management controls, pending matches no longer appear as draws, and per-game replay links use the existing path route.
+- Frontend-only Fog filtering is not an API security boundary. Backend bracket/tournament limitations are unchanged. Implementation notes: `docs/FRONTEND.md`.
