@@ -1,4 +1,4 @@
-"""FastAPI application entrypoint for Battlecode 9x9 RPS Platform.
+"""FastAPI application entrypoint for BattleCode UET RPS Platform.
 
 Configures CORS, database initialization lifecycle, mounts all REST API routes
 for authentication, bot management, match challenges, leaderboard rankings, and
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(
-    title="Battlecode 9x9 RPS Platform API",
+    title="BattleCode UET RPS Platform API",
     description="REST API for the 9x9 Rock-Paper-Scissors Chess tournament platform.",
     version="1.0.0",
     lifespan=lifespan,
@@ -70,6 +70,7 @@ app.include_router(admin.router, prefix="/api")
 app.include_router(admin_games.router, prefix="/api")
 app.include_router(games.router, prefix="/api")
 app.include_router(admin_tournaments.router, prefix="/api")
+app.include_router(admin_tournaments.public_router, prefix="/api")
 
 
 @app.get("/api/users/{user_id}/rating-history", tags=["users"])

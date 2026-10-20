@@ -279,9 +279,10 @@ def start_bracket(
         )
 
     # Persist matchups into BracketMatch rows
-    db.query(BracketMatch).delete()
+    db.query(BracketMatch).filter(BracketMatch.tournament_id == tournament_id).delete()
     for m in matchups:
         bm = BracketMatch(
+            tournament_id=tournament_id,
             round_name=m["round_name"],
             match_index=m["match_index"],
             player1_id=m["player1_id"],
@@ -355,4 +356,49 @@ def tournament_export_scores(
             "Content-Disposition": f"attachment; filename=tournament_{tournament_id}_final_scores.csv"
         },
     )
+
+
+public_router = APIRouter(prefix="/tournaments", tags=["tournaments"])
+
+
+@public_router.get("/{tournament_id}/bracket", response_model=Dict[str, Any])
+def get_public_tournament_bracket(
+    tournament_id: int,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Retrieve all bracket matches for a given tournament."""
+    tourney = db.query(Tournament).filter(Tournament.id == tournament_id).first()
+    if not tourney:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Tournament with id {tournament_id} not found.",
+        )
+    matches = (
+        db.query(BracketMatch)
+        .filter(BracketMatch.tournament_id == tournament_id)
+        .order_by(BracketMatch.id.asc())
+        .all()
+    )
+    return {
+        "tournament_id": tournament_id,
+        "tournament_name": tourney.name,
+        "status": tourney.status,
+        "matches": [
+            {
+                "id": m.id,
+                "tournament_id": m.tournament_id,
+                "round_name": m.round_name,
+                "match_index": m.match_index,
+                "player1_id": m.player1_id,
+                "player1_username": m.player1.username if m.player1 else None,
+                "player2_id": m.player2_id,
+                "player2_username": m.player2.username if m.player2 else None,
+                "score_p1": m.score_p1,
+                "score_p2": m.score_p2,
+                "winner_id": m.winner_id,
+                "status": m.status,
+            }
+            for m in matches
+        ],
+    }
 

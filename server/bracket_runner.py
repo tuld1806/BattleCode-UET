@@ -16,7 +16,16 @@ from sqlalchemy.orm import Session
 
 from engine.runner import run_match, save_replay
 from server.game_registry import GameRegistry
-from server.models import Bot, BracketMatch, Game, Tournament, User
+from server.models import (
+    Badge,
+    Bot,
+    BracketMatch,
+    Game,
+    Tournament,
+    TournamentEnrollment,
+    User,
+    UserBadge,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +42,27 @@ NEXT_ROUND_MAP: Dict[str, str] = {
 }
 
 
-def _get_active_bot(db: Session, user_id: int, game_id: Optional[int] = None) -> Optional[Bot]:
-    """Retrieve the primary active bot for a given user."""
+def _get_active_bot(
+    db: Session,
+    user_id: int,
+    game_id: Optional[int] = None,
+    tournament_id: Optional[int] = None,
+) -> Optional[Bot]:
+    """Retrieve tournament-pinned bot or primary active bot for a given user."""
+    if tournament_id is not None:
+        enrollment = (
+            db.query(TournamentEnrollment)
+            .filter(
+                TournamentEnrollment.tournament_id == tournament_id,
+                TournamentEnrollment.user_id == user_id,
+            )
+            .first()
+        )
+        if enrollment and enrollment.bot_id:
+            pinned_bot = db.query(Bot).filter(Bot.id == enrollment.bot_id).first()
+            if pinned_bot:
+                return pinned_bot
+
     query = db.query(Bot).filter(Bot.user_id == user_id, Bot.is_active == True)  # noqa: E712
     if game_id is not None:
         bot = query.filter(Bot.game_id == game_id).first()
@@ -164,21 +192,20 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
     Returns:
         Summary dict containing round_name, matches_played, champion_id, and status.
     """
-    pending_matches = (
-        db.query(BracketMatch)
-        .filter(BracketMatch.status == "pending")
-        .order_by(BracketMatch.id.asc())
-        .all()
-    )
+    query = db.query(BracketMatch).filter(BracketMatch.status == "pending")
+    if tournament_id is not None:
+        query = query.filter(BracketMatch.tournament_id == tournament_id)
+    pending_matches = query.order_by(BracketMatch.id.asc()).all()
 
     if not pending_matches:
         # Check if the tournament has concluded
-        final_match = (
-            db.query(BracketMatch)
-            .filter(BracketMatch.round_name.ilike("%final%"), BracketMatch.status == "completed")
-            .order_by(BracketMatch.id.desc())
-            .first()
+        final_query = db.query(BracketMatch).filter(
+            BracketMatch.round_name.ilike("%final%"),
+            BracketMatch.status == "completed",
         )
+        if tournament_id is not None:
+            final_query = final_query.filter(BracketMatch.tournament_id == tournament_id)
+        final_match = final_query.order_by(BracketMatch.id.desc()).first()
         champion_id = final_match.winner_id if final_match else None
         return {
             "message": "No pending bracket matches found.",
@@ -203,8 +230,8 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
 
     matches_played = 0
     for match in active_matches:
-        bot1 = _get_active_bot(db, match.player1_id, game_id=game_id)
-        bot2 = _get_active_bot(db, match.player2_id, game_id=game_id)
+        bot1 = _get_active_bot(db, match.player1_id, game_id=game_id, tournament_id=tournament_id)
+        bot2 = _get_active_bot(db, match.player2_id, game_id=game_id, tournament_id=tournament_id)
 
         # Walkover scenario 1: neither player has an active bot
         if not bot1 and not bot2:
@@ -250,11 +277,13 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
     db.commit()
 
     # Check whether the current round has fully completed
-    remaining_pending = (
-        db.query(BracketMatch)
-        .filter(BracketMatch.round_name == current_round_name, BracketMatch.status == "pending")
-        .count()
+    rem_query = db.query(BracketMatch).filter(
+        BracketMatch.round_name == current_round_name,
+        BracketMatch.status == "pending",
     )
+    if tournament_id is not None:
+        rem_query = rem_query.filter(BracketMatch.tournament_id == tournament_id)
+    remaining_pending = rem_query.count()
 
     champion_id: Optional[int] = None
 
@@ -262,12 +291,10 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
         # Check next round transition
         next_round_name = NEXT_ROUND_MAP.get(current_round_name)
         if next_round_name:
-            completed_matches = (
-                db.query(BracketMatch)
-                .filter(BracketMatch.round_name == current_round_name)
-                .order_by(BracketMatch.match_index.asc())
-                .all()
-            )
+            comp_query = db.query(BracketMatch).filter(BracketMatch.round_name == current_round_name)
+            if tournament_id is not None:
+                comp_query = comp_query.filter(BracketMatch.tournament_id == tournament_id)
+            completed_matches = comp_query.order_by(BracketMatch.match_index.asc()).all()
             # Pair consecutive winners into the next round
             for i in range(0, len(completed_matches), 2):
                 p1_id = completed_matches[i].winner_id
@@ -278,6 +305,7 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
                 )
                 if p1_id and p2_id:
                     next_match = BracketMatch(
+                        tournament_id=tournament_id,
                         round_name=next_round_name,
                         match_index=i // 2,
                         player1_id=p1_id,
@@ -295,6 +323,19 @@ def run_bracket_round(db: Session, tournament_id: Optional[int] = None) -> Dict[
                 if tourney:
                     tourney.status = "finished"
                     db.commit()
+
+            # Award top_1_champion badge to champion
+            if champion_id:
+                badge = db.query(Badge).filter(Badge.slug == "top_1_champion").first()
+                if badge:
+                    has_b = (
+                        db.query(UserBadge)
+                        .filter(UserBadge.user_id == champion_id, UserBadge.badge_id == badge.id)
+                        .first()
+                    )
+                    if not has_b:
+                        db.add(UserBadge(user_id=champion_id, badge_id=badge.id))
+                        db.commit()
 
     return {
         "round_name": current_round_name,
