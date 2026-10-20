@@ -201,6 +201,16 @@ def game_detail_page(
         .all()
     )
 
+    user_bots = []
+    if current_user:
+        user_bots = (
+            db.query(Bot)
+            .filter(Bot.user_id == current_user.id, Bot.game_id == game.id)
+            .order_by(Bot.id.desc())
+            .all()
+        )
+    deployed_bosses = [b for b in get_all_bosses_status(db, game_id=game.id) if b.get("is_deployed")]
+
     return templates.TemplateResponse(
         request=request,
         name="game_detail.html",
@@ -208,6 +218,8 @@ def game_detail_page(
             "game": game,
             "profiles": profiles,
             "tournaments": tournaments,
+            "user_bots": user_bots,
+            "deployed_bosses": deployed_bosses,
             "current_user": current_user,
         },
     )
@@ -702,16 +714,33 @@ def bracket_page(
 ) -> HTMLResponse:
     """Render the tournament bracket elimination tree and match pairings."""
     current_user = _get_optional_user(request, db)
-    bracket_matches = (
-        db.query(BracketMatch)
-        .order_by(BracketMatch.id.asc())
-        .all()
-    )
+    tournaments = db.query(Tournament).order_by(Tournament.created_at.desc()).all()
+
+    tourney_id_param = request.query_params.get("tournament_id")
+    selected_tourney = None
+    if tourney_id_param and tourney_id_param.isdigit():
+        selected_tourney = db.query(Tournament).filter(Tournament.id == int(tourney_id_param)).first()
+    if not selected_tourney and tournaments:
+        # Prefer a tournament that is in bracket or finished status, or the latest
+        bracket_tourney = next((t for t in tournaments if t.status in ("bracket", "finished")), None)
+        selected_tourney = bracket_tourney or tournaments[0]
+
+    if selected_tourney:
+        bracket_matches = (
+            db.query(BracketMatch)
+            .filter(BracketMatch.tournament_id == selected_tourney.id)
+            .order_by(BracketMatch.id.asc())
+            .all()
+        )
+    else:
+        bracket_matches = db.query(BracketMatch).order_by(BracketMatch.id.asc()).all()
 
     return templates.TemplateResponse(
         request=request,
         name="bracket.html",
         context={
+            "tournaments": tournaments,
+            "selected_tournament": selected_tourney,
             "bracket_matches": bracket_matches,
             "current_user": current_user,
         },

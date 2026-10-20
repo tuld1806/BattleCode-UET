@@ -1,52 +1,59 @@
 {% extends "base.html" %}
 
-{% block title %}Nhánh đấu Chung kết (Tournament Bracket) - Battlecode 9x9{% endblock %}
+{% block title %}Nhánh đấu Chung kết - BattleCode UET{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header flex-between">
   <div>
-    <h1 class="page-title">Nhánh đấu Chung kết (Tournament Bracket)</h1>
+    <h1 class="page-title">Nhánh đấu Chung kết</h1>
     <div class="page-subtitle">Vòng chung kết nhánh đấu loại trực tiếp (Single-elimination) cho Top kỳ thủ</div>
-  </div>
-
-  <div style="display: flex; gap: 10px;">
-    <a href="/" class="btn btn-sm">⬅ Bảng xếp hạng</a>
-    {% if current_user and current_user.is_admin %}
-      <a href="/admin" class="btn btn-sm">⚙ Quản trị Admin</a>
-    {% endif %}
   </div>
 </div>
 
+{% if tournaments and tournaments|length > 0 %}
+<div class="tournament-selector-tabs" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+  {% for t in tournaments %}
+  <a href="/bracket?tournament_id={{ t.id }}"
+     class="btn btn-sm {% if selected_tournament and selected_tournament.id == t.id %}btn-primary{% else %}btn-secondary{% endif %}"
+     style="display: inline-flex; align-items: center; gap: 6px;">
+    <span>🏆</span>
+    <span>{{ t.name }}</span>
+    <span class="badge badge-outline" style="font-size: 10px; margin-left: 4px;">{{ t.status }}</span>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="card" style="margin-bottom: 24px;">
   <div class="card-header">
-    <h2 class="card-title">Cây Nhánh đấu (Bracket Matches)</h2>
+    <h2 class="card-title">Cây Nhánh đấu</h2>
   </div>
 
   <div class="bracket-tree">
     {% set rounds = ['Quarterfinals', 'Semifinals', 'Finals'] %}
     {% for r_name in rounds %}
-      <div class="bracket-round">
-        <h4>{{ r_name }}</h4>
-        {% set round_matches = [] %}
-        {% for m in bracket_matches %}
-          {% if m.round_name.lower() == r_name.lower() %}
-            <div class="bracket-match">
-              <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Trận {{ m.match_index }}</div>
-              <div class="team-row {% if m.winner_id and m.winner_id == m.player1_id %}winner{% endif %}">
-                <span>{{ m.player1.username if m.player1 else 'TBD' }}</span>
-                <span>{{ m.score_p1 }}</span>
-              </div>
-              <div class="team-row {% if m.winner_id and m.winner_id == m.player2_id %}winner{% endif %}">
-                <span>{{ m.player2.username if m.player2 else 'TBD' }}</span>
-                <span>{{ m.score_p2 }}</span>
-              </div>
-              <div style="margin-top: 6px; font-size: 11px; display: flex; justify-content: space-between;">
-                <span style="color: var(--muted);">{{ m.status }}</span>
-              </div>
-            </div>
-          {% endif %}
-        {% endfor %}
+    <div class="bracket-round">
+      <h4>{{ r_name }}</h4>
+      {% set round_matches = [] %}
+      {% for m in bracket_matches %}
+      {% if m.round_name.lower() == r_name.lower() %}
+      <div class="bracket-match">
+        <div style="font-size: 11px; color: var(--muted); margin-bottom: 4px;">Trận {{ m.match_index }}</div>
+        <div class="team-row {% if m.winner_id and m.winner_id == m.player1_id %}winner{% endif %}">
+          <span>{{ m.player1.username if m.player1 else 'TBD' }}</span>
+          <span>{{ m.score_p1 }}</span>
+        </div>
+        <div class="team-row {% if m.winner_id and m.winner_id == m.player2_id %}winner{% endif %}">
+          <span>{{ m.player2.username if m.player2 else 'TBD' }}</span>
+          <span>{{ m.score_p2 }}</span>
+        </div>
+        <div style="margin-top: 6px; font-size: 11px; display: flex; justify-content: space-between;">
+          <span style="color: var(--muted);">{{ m.status }}</span>
+        </div>
       </div>
+      {% endif %}
+      {% endfor %}
+    </div>
     {% endfor %}
   </div>
 </div>
@@ -84,9 +91,9 @@
           <td>{{ bm.score_p1 }} - {{ bm.score_p2 }}</td>
           <td>
             {% if bm.status == 'completed' %}
-              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
+            <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Hoàn thành</span>
             {% else %}
-              <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Chưa diễn ra</span>
+            <span class="tag" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b;">Chưa diễn ra</span>
             {% endif %}
           </td>
         </tr>

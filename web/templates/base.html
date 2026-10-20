@@ -1,43 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Battlecode 9x9 RPS Platform{% endblock %}</title>
+  <title>{% block title %}BattleCode UET RPS Platform{% endblock %}</title>
   <link rel="stylesheet" href="/static/css/style.css">
   {% block extra_head %}{% endblock %}
 </head>
+
 <body>
   <nav class="navbar">
     <a href="/" class="nav-brand">
-      <span>⚔️ Battlecode 9x9</span>
-      <span class="brand-badge">RPS Chess</span>
+      <span>BattleCode UET</span>
     </a>
 
     <ul class="nav-links">
-      <li><a href="/lobby" class="{% if request.url.path == '/lobby' %}active{% endif %}">Sảnh Game (Lobby)</a></li>
-      <li><a href="/" class="{% if request.url.path == '/' %}active{% endif %}">Leaderboard</a></li>
+      <li><a href="/lobby" class="{% if request.url.path == '/lobby' or request.url.path == '/' %}active{% endif %}">Sảnh Game</a></li>
       <li><a href="/bracket" class="{% if request.url.path == '/bracket' %}active{% endif %}">Bracket</a></li>
-      <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>
       {% if current_user and current_user.is_admin %}
-        <li><a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}">Admin</a></li>
+      <li><a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}">Admin</a></li>
+      {% elif current_user %}
+      <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>
       {% endif %}
     </ul>
 
     <div class="nav-user">
       {% if current_user %}
-        <div class="user-badge">
-          <span>👤 {{ current_user.username }}</span>
-          {% if current_user.is_admin %}
-            <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); margin-left: 4px;">🛡️ Admin</span>
-          {% else %}
-            <span class="elo-tag">⭐ {{ current_user.elo }}</span>
-          {% endif %}
-        </div>
-        <button class="btn btn-sm" onclick="logout()">Logout</button>
+      <div class="user-badge">
+        <span>👤 {{ current_user.username }}</span>
+        {% if current_user.is_admin %}
+        <span class="tag"
+          style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); margin-left: 4px;">🛡️
+          Admin</span>
+        {% else %}
+        <span class="elo-tag">⭐ {{ current_user.elo }}</span>
+        {% endif %}
+      </div>
+      <button class="btn btn-sm" onclick="logout()">Logout</button>
       {% else %}
-        <a href="/login" class="btn btn-sm">Login</a>
-        <a href="/register" class="btn btn-primary btn-sm">Register</a>
+      <a href="/login" class="btn btn-sm">Login</a>
+      <a href="/register" class="btn btn-primary btn-sm">Register</a>
       {% endif %}
     </div>
   </nav>
@@ -58,4 +61,5 @@
   </script>
   {% block scripts %}{% endblock %}
 </body>
+
 </html>

@@ -18,35 +18,40 @@
     </div>
   </header>
 
-  <!-- 3-Tab Navigation Bar -->
+  <!-- 4-Tab Navigation Bar -->
   <nav class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('tab-rules')" id="btn-tab-rules">
-      📜 Luật Chơi &amp; Bot API
+      📜 Hướng Dẫn &amp; Nộp Bot
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-friendly')" id="btn-tab-friendly">
+      ⚔️ Đấu Giao Hữu (24/7)
     </button>
     <button class="tab-btn" onclick="switchTab('tab-leaderboard')" id="btn-tab-leaderboard">
       🏆 Bảng Xếp Hạng ({{ profiles|length }})
     </button>
     <button class="tab-btn" onclick="switchTab('tab-tournaments')" id="btn-tab-tournaments">
-      ⚔️ Giải Đấu ({{ tournaments|length }})
+      🎖️ Giải Đấu ({{ tournaments|length }})
     </button>
   </nav>
 
-  <!-- Tab 1: Rules -->
+  <!-- Tab 1: Rules & Bot Upload -->
   <section class="tab-pane active" id="tab-rules">
-    <div class="card rules-card">
-      <div class="card-header">
-        <h2>Quy Tắc Thi Đấu &amp; Đặc Tả Kỹ Thuật</h2>
-      </div>
-      <div class="card-body markdown-body">
-        <div class="rules-highlight">
-          <h3>🎮 Giới thiệu bộ môn</h3>
-          <p>{{ game.description_md or "Bộ môn thi đấu lập trình bot AI chính thức trên nền tảng BattleCode-UET." }}</p>
+    <div class="grid grid-2" style="margin-bottom: 24px;">
+      <!-- Rules & Spec -->
+      <div class="card rules-card">
+        <div class="card-header">
+          <h2>Quy Tắc Thi Đấu &amp; Đặc Tả Kỹ Thuật</h2>
         </div>
+        <div class="card-body markdown-body">
+          <div class="rules-highlight">
+            <h3>🎮 Giới thiệu bộ môn</h3>
+            <p>{{ game.description_md or "Bộ môn thi đấu lập trình bot AI chính thức trên nền tảng BattleCode-UET." }}</p>
+          </div>
 
-        <div class="api-spec-box">
-          <h3>🤖 Giao thức Bot API Signature</h3>
-          <p>Bot của bạn cần triển khai hàm quyết định nước đi chuẩn hóa sau:</p>
-          <pre><code>def get_move(board, my_player, history):
+          <div class="api-spec-box">
+            <h3>🤖 Giao thức Bot API Signature</h3>
+            <p>Bot của bạn cần triển khai hàm quyết định nước đi chuẩn hóa sau:</p>
+            <pre><code>def get_move(board, my_player, history):
     """
     Tham số:
       - board: Trạng thái hiện tại của bàn cờ.
@@ -58,23 +63,147 @@
     """
     # Triển khai thuật toán AI (Minimax, Heuristic, Rule-based, ...)
     return move</code></pre>
-        </div>
+          </div>
 
-        <div class="rules-grid">
-          <div class="rule-box">
-            <h4>⏱️ Giới hạn thời gian</h4>
-            <p>1.0 giây tối đa cho mỗi lượt tính toán (per-turn timeout). Bot chạy quá thời gian sẽ bị xử thua kỹ thuật (forfeit).</p>
+          <div class="rules-grid">
+            <div class="rule-box">
+              <h4>⏱️ Giới hạn thời gian</h4>
+              <p>1.0 giây tối đa cho mỗi lượt tính toán (per-turn timeout). Quá thời gian sẽ bị xử thua kỹ thuật (forfeit).</p>
+            </div>
+            <div class="rule-box">
+              <h4>🔒 Môi trường Sandboxed</h4>
+              <p>Bot thực thi trong tiến trình subprocess cô lập, nghiêm cấm các lệnh truy cập file ngoài hoặc kết nối mạng.</p>
+            </div>
           </div>
-          <div class="rule-box">
-            <h4>🔒 Môi trường Sandboxed</h4>
-            <p>Bot thực thi trong tiến trình subprocess cô lập, nghiêm cấm các lệnh truy cập file ngoài hoặc kết nối mạng.</p>
+        </div>
+      </div>
+
+      <!-- Upload Bot Form & User Bots for this Game -->
+      <div class="card upload-card">
+        <div class="card-header flex-between">
+          <h2>📤 Nộp Bot Cho Bộ Môn Này</h2>
+          <span class="badge">{{ user_bots|length }} Bot của bạn</span>
+        </div>
+        <div class="card-body">
+          {% if current_user %}
+          <form id="botUploadForm" onsubmit="handleBotUpload(event)" style="margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label style="display: block; font-weight: 600; margin-bottom: 6px;">Chọn file Python (.py)</label>
+              <input type="file" id="botFile" accept=".py" required class="form-control" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              🚀 Nộp Bot Lên Sàn Đấu
+            </button>
+          </form>
+
+          <h3 style="font-size: 1rem; margin-bottom: 10px; border-top: 1px solid var(--border); padding-top: 14px;">Danh Sách Bot Của Bạn ({{ game.slug }})</h3>
+          {% if user_bots %}
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Tên file</th>
+                  <th>Trạng thái</th>
+                  <th style="text-align: right;">Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for b in user_bots %}
+                <tr>
+                  <td><code>{{ b.filename }}</code></td>
+                  <td>
+                    {% if b.is_active %}
+                    <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">🟢 Đang đấu giao hữu</span>
+                    {% else %}
+                    <span class="badge" style="background: rgba(139, 148, 158, 0.2); color: var(--text-muted);">Lưu trữ</span>
+                    {% endif %}
+                  </td>
+                  <td style="text-align: right;">
+                    {% if not b.is_active %}
+                    <button class="btn btn-sm btn-secondary" onclick="activateBot({{ b.id }})">Chọn làm Bot Giao Hữu</button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
+          {% else %}
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Bạn chưa nộp bot nào cho trò chơi này. Hãy chọn tệp .py ở trên để bắt đầu!</p>
+          {% endif %}
+
+          {% else %}
+          <div class="empty-state">
+            <p>Vui lòng <a href="/login?next=/games/{{ game.slug }}" class="btn btn-sm btn-primary">Đăng nhập</a> để nộp bot và tham gia thi đấu.</p>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Tab 2: Leaderboard -->
+  <!-- Tab 2: 24/7 Friendly Matches -->
+  <section class="tab-pane" id="tab-friendly">
+    <div class="card friendly-card" style="margin-bottom: 24px;">
+      <div class="card-header flex-between">
+        <div>
+          <h2>⚔️ Sàn Đấu Giao Hữu 24/7 — {{ game.display_name }}</h2>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0;">
+            Khiêu chiến Boss benchmark hoặc các kỳ thủ khác bất kỳ lúc nào để rèn luyện thuật toán và tích lũy kinh nghiệm Elo.
+          </p>
+        </div>
+        <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">Đang mở 24/7</span>
+      </div>
+
+      <div class="card-body">
+        <!-- Section: Benchmark Bosses -->
+        <h3 style="font-size: 1.1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>🤖</span> Benchmark Boss Đối Kháng
+        </h3>
+        {% if deployed_bosses %}
+        <div class="grid grid-3" style="gap: 16px; margin-bottom: 24px;">
+          {% for boss in deployed_bosses %}
+          <div class="card" style="background: rgba(22, 27, 34, 0.6); border: 1px solid var(--border);">
+            <div class="card-body" style="padding: 16px;">
+              <div class="flex-between" style="margin-bottom: 8px;">
+                <h4 style="margin: 0; font-size: 1.05rem;">{{ boss.display_name }}</h4>
+                <span class="badge badge-outline">{{ boss.level }}</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); min-height: 40px; margin-bottom: 12px;">
+                {{ boss.description }}
+              </p>
+              <div class="flex-between" style="align-items: center;">
+                <span style="font-weight: 700; color: var(--accent);">Elo: {{ boss.elo }}</span>
+                {% if current_user and user_bots %}
+                <button class="btn btn-sm btn-primary" onclick="challengeOpponent({{ boss.user_id }})">
+                  ⚔️ Khiêu chiến
+                </button>
+                {% else %}
+                <button class="btn btn-sm btn-secondary" disabled title="Cần có bot để khiêu chiến">
+                  Chưa sẵn sàng
+                </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 24px;">Chưa có Boss nào được kích hoạt cho bộ môn này.</p>
+        {% endif %}
+
+        <!-- Section: Player Opponents -->
+        <h3 style="font-size: 1.1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+          <span>👥</span> Đối Thủ Kỳ Thủ Trong Bộ Môn
+        </h3>
+        <div id="opponentsListContainer">
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Đang tải danh sách đối thủ...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab 3: Leaderboard -->
   <section class="tab-pane" id="tab-leaderboard">
     <div class="card leaderboard-card">
       <div class="card-header flex-between">
@@ -98,25 +227,20 @@
               <tbody>
                 {% for prof in profiles %}
                   <tr class="{% if current_user and current_user.id == prof.user_id %}highlight-row{% endif %}">
-                    <td class="rank-cell">
-                      {% if loop.index == 1 %}
-                        🥇 1
-                      {% elif loop.index == 2 %}
-                        🥈 2
-                      {% elif loop.index == 3 %}
-                        🥉 3
-                      {% else %}
-                        #{{ loop.index }}
-                      {% endif %}
+                    <td style="font-weight: 700; color: var(--accent);">#{{ loop.index }}</td>
+                    <td>
+                      <div class="player-cell">
+                        <span class="player-avatar">👤</span>
+                        <div class="player-info">
+                          <span class="player-name">{{ prof.user.username if prof.user else 'Unknown' }}</span>
+                          {% if prof.user and prof.user.is_admin %}
+                            <span class="badge badge-admin">Admin</span>
+                          {% endif %}
+                        </div>
+                      </div>
                     </td>
-                    <td class="username-cell">
-                      <strong>{{ prof.user.username if prof.user else 'Unknown' }}</strong>
-                      {% if current_user and current_user.id == prof.user_id %}
-                        <span class="badge badge-primary">Bạn</span>
-                      {% endif %}
-                    </td>
-                    <td class="elo-cell" style="text-align: right;">
-                      <span class="elo-score">{{ prof.elo }}</span>
+                    <td style="text-align: right; font-weight: 700; font-size: 1.05rem;">
+                      {{ prof.elo }}
                     </td>
                     <td style="text-align: center; color: #3fb950; font-weight: 600;">{{ prof.wins }}</td>
                     <td style="text-align: center; color: #f85149;">{{ prof.losses }}</td>
@@ -128,14 +252,14 @@
           </div>
         {% else %}
           <div class="empty-state">
-            <p class="text-muted">Chưa có dữ liệu thi đấu hoặc bảng xếp hạng cho bộ môn này.</p>
+            <p class="text-muted">Chưa có kỳ thủ nào có bot thi đấu hợp lệ cho bộ môn này.</p>
           </div>
         {% endif %}
       </div>
     </div>
   </section>
 
-  <!-- Tab 3: Tournaments -->
+  <!-- Tab 4: Tournaments -->
   <section class="tab-pane" id="tab-tournaments">
     <div class="card tournaments-card">
       <div class="card-header">
@@ -145,7 +269,7 @@
         {% if tournaments %}
           <div class="tournament-list">
             {% for tourney in tournaments %}
-              <div class="tournament-item card" id="tourney-{{ tourney.id }}">
+              <div class="tournament-item card" id="tourney-{{ tourney.id }}" style="margin-bottom: 16px;">
                 <div class="tourney-main">
                   <div class="tourney-meta">
                     <span class="status-badge status-{{ tourney.status }}">
@@ -170,13 +294,13 @@
                   </div>
                 </div>
 
-                <div class="tourney-actions">
+                <div class="tourney-actions" style="margin-top: 12px; display: flex; gap: 8px;">
                   <a href="/games/{{ game.slug }}/tournaments/{{ tourney.id }}" class="btn btn-outline btn-sm">
                     Xem chi tiết &rarr;
                   </a>
                   {% if tourney.enrollment_open and current_user and not current_user.is_admin %}
-                    <button class="btn btn-primary btn-sm" onclick="enrollTournament('{{ game.slug }}', {{ tourney.id }})">
-                      Ghi danh thi đấu
+                    <button class="btn btn-primary btn-sm" onclick="openEnrollModal({{ tourney.id }}, '{{ tourney.name }}')">
+                      🎖️ Ghi danh thi đấu
                     </button>
                   {% endif %}
                 </div>
@@ -193,219 +317,35 @@
   </section>
 </div>
 
-<style>
-.game-detail-container {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 1.5rem 0 3rem;
-}
+<!-- Modal Enroll with Bot Selection -->
+<div id="enrollModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+  <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; width: 90%; max-width: 480px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <h3 id="enrollModalTitle" style="margin-top: 0;">Ghi Danh Giải Đấu</h3>
+    <p style="color: var(--text-muted); font-size: 0.9rem;">
+      Chọn bot bạn muốn ghim làm Bot Đấu Giải cho giải đấu này (bot này sẽ được giữ nguyên cho các trận đấu của giải):
+    </p>
 
-.game-hero {
-  background: linear-gradient(135deg, rgba(22, 27, 34, 0.95), rgba(30, 38, 50, 0.85));
-  border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 2rem 2.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
+    <div style="margin: 16px 0;">
+      <label style="display: block; font-weight: 600; margin-bottom: 6px;">Chọn Bot dự thi:</label>
+      <select id="enrollBotSelect" class="form-control" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+        {% for b in user_bots %}
+        <option value="{{ b.id }}">
+          {{ b.filename }} {% if b.is_active %}(Bot Giao Hữu hiện tại){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
 
-.hero-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.85rem;
-}
-
-.back-link {
-  color: var(--accent);
-  text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.back-link:hover {
-  text-decoration: underline;
-}
-
-.game-slug-tag {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  background: rgba(88, 166, 255, 0.1);
-  color: var(--accent);
-  border: 1px solid rgba(88, 166, 255, 0.25);
-  padding: 0.2rem 0.6rem;
-  border-radius: 4px;
-}
-
-.game-title {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin: 0 0 0.5rem 0;
-}
-
-.game-headline {
-  font-size: 1.05rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-  margin: 0;
-}
-
-.tab-nav {
-  display: flex;
-  gap: 0.5rem;
-  border-bottom: 2px solid var(--border-subtle);
-  margin-bottom: 1.5rem;
-}
-
-.tab-btn {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 0.85rem 1.4rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px;
-  transition: all 0.2s ease;
-}
-
-.tab-btn:hover {
-  color: var(--text-primary);
-}
-
-.tab-btn.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-}
-
-.tab-pane {
-  display: none;
-}
-
-.tab-pane.active {
-  display: block;
-  animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.rules-highlight {
-  margin-bottom: 1.5rem;
-}
-
-.api-spec-box {
-  background: rgba(13, 17, 23, 0.8);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 1.25rem;
-  margin: 1.5rem 0;
-}
-
-.api-spec-box pre {
-  margin: 0.75rem 0 0 0;
-  background: #0d1117;
-  padding: 1rem;
-  border-radius: 6px;
-  overflow-x: auto;
-}
-
-.rules-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.25rem;
-  margin-top: 1.5rem;
-}
-
-.rule-box {
-  background: rgba(22, 27, 34, 0.6);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  padding: 1.2rem;
-}
-
-.rule-box h4 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1rem;
-  color: var(--text-primary);
-}
-
-.rule-box p {
-  margin: 0;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.highlight-row {
-  background: rgba(88, 166, 255, 0.08) !important;
-}
-
-.tournament-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.tournament-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.25rem 1.5rem;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-}
-
-.tourney-meta {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.5rem;
-}
-
-.status-badge {
-  font-size: 0.78rem;
-  font-weight: 600;
-  padding: 0.2rem 0.55rem;
-  border-radius: 4px;
-}
-
-.status-open { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
-.status-running { background: rgba(210, 153, 34, 0.2); color: #d29922; }
-.status-bracket { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
-.status-finished { background: rgba(139, 148, 158, 0.2); color: #8b949e; }
-
-.tourney-info-tag {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.tourney-title {
-  margin: 0 0 0.35rem 0;
-  font-size: 1.15rem;
-  color: var(--text-primary);
-}
-
-.tourney-schedule {
-  display: flex;
-  gap: 1.25rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-}
-
-.tourney-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-</style>
+    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+      <button class="btn btn-secondary" onclick="closeEnrollModal()">Hủy</button>
+      <button class="btn btn-primary" onclick="confirmEnroll()">Xác Nhận Ghi Danh</button>
+    </div>
+  </div>
+</div>
 
 <script>
+let currentEnrollTourneyId = null;
+
 function switchTab(targetId) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -414,24 +354,144 @@ function switchTab(targetId) {
   const targetBtn = document.getElementById('btn-' + targetId);
   if (targetPane) targetPane.classList.add('active');
   if (targetBtn) targetBtn.classList.add('active');
+
+  if (targetId === 'tab-friendly') {
+    loadFriendlyOpponents();
+  }
 }
 
-async function enrollTournament(gameSlug, tourneyId) {
+async function handleBotUpload(event) {
+  event.preventDefault();
+  const fileInput = document.getElementById('botFile');
+  if (!fileInput.files.length) return;
+
+  const formData = new FormData();
+  formData.append('file', fileInput.files[0]);
+  formData.append('game_id', '{{ game.id }}');
+
   try {
-    const res = await fetch(`/api/games/${gameSlug}/tournaments/${tourneyId}/enroll`, {
+    const res = await fetch('/api/bots/upload', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      body: formData
     });
-    const data = await res.json().catch(() => ({}));
+    const data = await res.json();
+    if (res.ok) {
+      alert('Nộp bot thành công!');
+      location.reload();
+    } else {
+      alert('Lỗi nộp bot: ' + (data.detail || 'Thất bại'));
+    }
+  } catch (e) {
+    alert('Lỗi kết nối máy chủ');
+  }
+}
+
+async function activateBot(botId) {
+  try {
+    const res = await fetch(`/api/bots/${botId}/activate`, {
+      method: 'POST'
+    });
+    if (res.ok) {
+      location.reload();
+    } else {
+      const err = await res.json();
+      alert('Lỗi: ' + (err.detail || 'Không thể kích hoạt'));
+    }
+  } catch (e) {
+    alert('Lỗi kết nối máy chủ');
+  }
+}
+
+async function challengeOpponent(opponentId) {
+  try {
+    const res = await fetch('/api/matches/challenge', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        opponent_id: opponentId,
+        game_id: {{ game.id }}
+      })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      alert('Đã gửi yêu cầu khiêu chiến thành công! Trận đấu đang được xử lý.');
+    } else {
+      alert('Lỗi: ' + (data.detail || 'Không thể khiêu chiến'));
+    }
+  } catch (e) {
+    alert('Lỗi kết nối máy chủ');
+  }
+}
+
+async function loadFriendlyOpponents() {
+  const container = document.getElementById('opponentsListContainer');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/games/{{ game.slug }}/friendly-opponents');
+    if (!res.ok) {
+      container.innerHTML = '<p class="text-muted">Không thể tải danh sách đối thủ.</p>';
+      return;
+    }
+    const data = await res.json();
+    const players = data.players || [];
+    if (!players.length) {
+      container.innerHTML = '<p class="text-muted">Chưa có người chơi nào có bot giao hữu sẵn sàng.</p>';
+      return;
+    }
+
+    let html = `<div class="table-responsive"><table class="table"><thead><tr>
+      <th>Kỳ thủ</th><th>Elo</th><th>Bot Giao Hữu</th><th style="text-align: right;">Hành động</th>
+    </tr></thead><tbody>`;
+
+    for (const p of players) {
+      html += `<tr>
+        <td><strong>${p.username}</strong></td>
+        <td><b>${p.elo}</b></td>
+        <td><code>${p.bot_filename || 'bot.py'}</code></td>
+        <td style="text-align: right;">
+          <button class="btn btn-sm btn-primary" onclick="challengeOpponent(${p.user_id})">⚔️ Khiêu chiến</button>
+        </td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = '<p class="text-muted">Lỗi tải dữ liệu đối thủ.</p>';
+  }
+}
+
+function openEnrollModal(tourneyId, tourneyName) {
+  currentEnrollTourneyId = tourneyId;
+  document.getElementById('enrollModalTitle').innerText = 'Ghi Danh: ' + tourneyName;
+  document.getElementById('enrollModal').style.display = 'flex';
+}
+
+function closeEnrollModal() {
+  currentEnrollTourneyId = null;
+  document.getElementById('enrollModal').style.display = 'none';
+}
+
+async function confirmEnroll() {
+  if (!currentEnrollTourneyId) return;
+  const botSelect = document.getElementById('enrollBotSelect');
+  const botId = botSelect ? parseInt(botSelect.value, 10) : null;
+
+  try {
+    const res = await fetch(`/api/games/{{ game.slug }}/tournaments/${currentEnrollTourneyId}/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bot_id: botId })
+    });
+    const data = await res.json();
     if (res.ok) {
       alert('Ghi danh thành công!');
-      window.location.reload();
+      location.reload();
     } else {
-      alert(data.detail || 'Không thể ghi danh vào giải đấu.');
+      alert('Lỗi: ' + (data.detail || 'Không thể ghi danh'));
     }
-  } catch (err) {
-    console.error('Enroll error:', err);
-    alert('Đã xảy ra lỗi khi kết nối máy chủ.');
+  } catch (e) {
+    alert('Lỗi kết nối máy chủ');
   }
 }
 </script>

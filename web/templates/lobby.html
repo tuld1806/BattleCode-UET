@@ -11,6 +11,13 @@
       <p class="hero-subtitle">
         Lựa chọn tựa game yêu thích, thiết kế thuật toán bot tối ưu và tranh tài trên bảng xếp hạng Elo cùng cộng đồng.
       </p>
+      {% if current_user and current_user.is_admin %}
+      <div style="margin-top: 1.25rem;">
+        <a href="/admin/games/upload" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+          <span>➕</span> Tạo / Tải Lên Game Mới
+        </a>
+      </div>
+      {% endif %}
     </div>
   </header>
 
@@ -54,9 +61,16 @@
                 <span title="Người chơi tích cực">👥 Sẵn sàng</span>
                 <span title="Giải đấu">🏆 Giải đấu</span>
               </div>
-              <a href="/games/{{ game.slug }}" class="btn btn-primary btn-play">
-                Khám phá &amp; Thi đấu &rarr;
-              </a>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                {% if current_user and current_user.is_admin %}
+                <a href="/admin/games/{{ game.slug }}" class="btn btn-secondary btn-sm" title="Quản trị game này">
+                  ⚙️ Quản trị
+                </a>
+                {% endif %}
+                <a href="/games/{{ game.slug }}" class="btn btn-primary btn-play">
+                  Khám phá &rarr;
+                </a>
+              </div>
             </div>
           </article>
         {% endfor %}
