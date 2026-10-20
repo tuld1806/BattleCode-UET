@@ -20,7 +20,19 @@ from sqlalchemy.orm import Session
 
 from server.boss_manager import get_all_bosses_status
 from server.database import get_db, init_db
-from server.models import Bot, BracketMatch, Game, GameProfile, Match, Tournament, TournamentEnrollment, User
+from server.models import (
+    ApiKey,
+    Badge,
+    Bot,
+    BracketMatch,
+    Game,
+    GameProfile,
+    Match,
+    Tournament,
+    TournamentEnrollment,
+    User,
+    UserBadge,
+)
 from server.routes import admin, admin_games, admin_tournaments, auth, bots, leaderboard, matches, games
 from server.routes.admin import _get_all_settings_dict
 from server.routes.auth import ACTIVE_SESSIONS, get_token_from_request
@@ -64,6 +76,7 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 # Mount all feature routes under /api
 app.include_router(auth.router, prefix="/api")
+app.include_router(auth.profile_router, prefix="/api")
 app.include_router(bots.router, prefix="/api")
 app.include_router(matches.router, prefix="/api")
 app.include_router(leaderboard.router, prefix="/api")
@@ -331,8 +344,22 @@ def profile_page(
             .filter(GameProfile.user_id == current_user.id)
             .all()
         )
+        user_badges = (
+            db.query(UserBadge)
+            .filter(UserBadge.user_id == current_user.id)
+            .order_by(UserBadge.earned_at.desc())
+            .all()
+        )
+        api_keys = (
+            db.query(ApiKey)
+            .filter(ApiKey.user_id == current_user.id)
+            .order_by(ApiKey.created_at.desc())
+            .all()
+        )
     else:
         game_profiles = []
+        user_badges = []
+        api_keys = []
 
     return templates.TemplateResponse(
         request=request,
@@ -342,6 +369,8 @@ def profile_page(
             "user_bots": user_bots,
             "user_matches": user_matches,
             "game_profiles": game_profiles,
+            "user_badges": user_badges,
+            "api_keys": api_keys,
         },
     )
 
@@ -379,6 +408,12 @@ def user_profile_by_id_page(
         .filter(GameProfile.user_id == target_user.id)
         .all()
     )
+    target_badges = (
+        db.query(UserBadge)
+        .filter(UserBadge.user_id == target_user.id)
+        .order_by(UserBadge.earned_at.desc())
+        .all()
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -389,6 +424,8 @@ def user_profile_by_id_page(
             "user_bots": user_bots,
             "user_matches": user_matches,
             "game_profiles": game_profiles,
+            "user_badges": target_badges,
+            "target_badges": target_badges,
         },
     )
 

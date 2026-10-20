@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Hồ sơ & Quản lý Bot (Profile) - Battlecode 9x9{% endblock %}
+{% block title %}Hồ sơ & Quản lý Bot (Profile) - BattleCode UET{% endblock %}
 
 {% block content %}
 {% set display_user = target_user if (target_user is defined and target_user) else current_user %}
@@ -10,9 +10,9 @@
   <div>
     <h1 class="page-title">
       {% if is_own_profile or (target_user is not defined or not target_user) %}
-        Hồ sơ người chơi &amp; Quản lý Bot (Profile)
+      Hồ sơ người chơi &amp; Quản lý Bot (Profile)
       {% else %}
-        Hồ sơ người chơi: {{ display_user.username }}
+      Hồ sơ người chơi: {{ display_user.username }}
       {% endif %}
     </h1>
     <div class="page-subtitle">Tải lên thuật toán Python (.py) và theo dõi lịch sử trận đấu</div>
@@ -21,14 +21,16 @@
   {% if display_user %}
   <div style="display: flex; gap: 12px; align-items: center;">
     {% if display_user.is_admin %}
-      <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 14px; padding: 6px 12px;">🛡️ Quản trị viên</span>
+    <span class="tag"
+      style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 14px; padding: 6px 12px;">🛡️
+      Quản trị viên</span>
     {% else %}
-      <div class="card" style="padding: 8px 16px; display: flex; gap: 16px;">
-        <div>Kỳ thủ: <strong style="color: var(--text-primary);">{{ display_user.username }}</strong></div>
-        <div>Elo: <strong class="elo-badge">{{ display_user.elo }}</strong></div>
-        <div>Thắng: <strong style="color: #34d399;">{{ display_user.wins }}</strong></div>
-        <div>Thua: <strong style="color: #f87171;">{{ display_user.losses }}</strong></div>
-      </div>
+    <div class="card" style="padding: 8px 16px; display: flex; gap: 16px;">
+      <div>Kỳ thủ: <strong style="color: var(--text-primary);">{{ display_user.username }}</strong></div>
+      <div>Elo: <strong class="elo-badge">{{ display_user.elo }}</strong></div>
+      <div>Thắng: <strong style="color: #34d399;">{{ display_user.wins }}</strong></div>
+      <div>Thua: <strong style="color: #f87171;">{{ display_user.losses }}</strong></div>
+    </div>
     {% endif %}
   </div>
   {% endif %}
@@ -37,7 +39,8 @@
 {% if not display_user %}
 <div class="card" style="text-align: center; padding: 48px 24px;">
   <h2>Vui lòng đăng nhập để quản lý Bot</h2>
-  <p style="color: var(--muted); margin: 8px 0 24px;">Bạn cần đăng nhập tài khoản để tải lên file mã nguồn bot Python (.py) và tham gia thi đấu.</p>
+  <p style="color: var(--muted); margin: 8px 0 24px;">Bạn cần đăng nhập tài khoản để tải lên file mã nguồn bot Python
+    (.py) và tham gia thi đấu.</p>
   <div>
     <a href="/login" class="btn btn-primary">Đăng nhập</a>
     <a href="/register" class="btn" style="margin-left: 8px;">Đăng ký tài khoản</a>
@@ -47,7 +50,8 @@
 <div class="card" style="text-align: center; padding: 48px 24px; margin-bottom: 24px;">
   <h2>🛡️ Tài khoản Quản trị viên Hệ thống</h2>
   <p style="color: var(--muted); margin: 12px auto 24px; max-width: 600px; line-height: 1.6;">
-    Tài khoản Admin có vai trò cấu hình hệ thống, tạo giải đấu và điều khiển cổng thi đấu. Admin không tham gia trò chơi như người chơi và không nộp bot thi đấu.
+    Tài khoản Admin có vai trò cấu hình hệ thống, tạo giải đấu và điều khiển cổng thi đấu. Admin không tham gia trò chơi
+    như người chơi và không nộp bot thi đấu.
   </p>
   <div style="display: flex; gap: 12px; justify-content: center;">
     <a href="/admin" class="btn btn-primary">⚙ Đến Trang Quản trị Admin</a>
@@ -62,21 +66,28 @@
   <div class="card-header">
     <h2 class="card-title">Hồ Sơ Thành Tích Từng Bộ Môn (Game Profiles)</h2>
   </div>
-  <div class="game-profiles-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 12px 0;">
+  <div class="game-profiles-grid"
+    style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 12px 0;">
     {% for gp in game_profiles %}
-    <div class="game-profile-card card" style="background: rgba(22, 27, 34, 0.75); border: 1px solid var(--border-subtle); padding: 16px; border-radius: 8px;">
+    <div class="game-profile-card card"
+      style="background: rgba(22, 27, 34, 0.75); border: 1px solid var(--border-subtle); padding: 16px; border-radius: 8px;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <strong style="font-size: 1.05rem; color: var(--text-primary);">{{ gp.game.display_name if gp.game else 'Trò chơi' }}</strong>
-        <span class="game-slug-tag" style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent); background: rgba(88, 166, 255, 0.1); padding: 2px 6px; border-radius: 4px;">{{ gp.game.slug if gp.game else '' }}</span>
+        <strong style="font-size: 1.05rem; color: var(--text-primary);">{{ gp.game.display_name if gp.game else 'Trò
+          chơi' }}</strong>
+        <span class="game-slug-tag"
+          style="font-size: 0.75rem; font-family: var(--font-mono); color: var(--accent); background: rgba(88, 166, 255, 0.1); padding: 2px 6px; border-radius: 4px;">{{
+          gp.game.slug if gp.game else '' }}</span>
       </div>
       <div style="display: flex; gap: 14px; font-size: 0.88rem; margin-top: 8px; align-items: baseline;">
-        <div>Elo: <strong class="elo-badge" style="color: var(--accent); font-size: 1.15rem;">{{ gp.elo }}</strong></div>
+        <div>Elo: <strong class="elo-badge" style="color: var(--accent); font-size: 1.15rem;">{{ gp.elo }}</strong>
+        </div>
         <div style="color: #3fb950;">W: <strong>{{ gp.wins }}</strong></div>
         <div style="color: #f85149;">L: <strong>{{ gp.losses }}</strong></div>
         <div style="color: var(--text-muted);">D: <strong>{{ gp.draws }}</strong></div>
       </div>
       <div style="margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border-subtle); text-align: right;">
-        <a href="/profile/{{ current_user.id }}/games/{{ gp.game.slug if gp.game else '' }}" style="font-size: 0.82rem; color: var(--accent); text-decoration: none;">
+        <a href="/profile/{{ current_user.id }}/games/{{ gp.game.slug if gp.game else '' }}"
+          style="font-size: 0.82rem; color: var(--accent); text-decoration: none;">
           Chi tiết thành tích &rarr;
         </a>
       </div>
@@ -101,7 +112,8 @@
         <div id="selectedFileName" style="margin-top: 10px; font-weight: 700; color: var(--accent);"></div>
       </div>
 
-      <input type="file" id="botFileInput" name="file" accept=".py" style="display: none;" onchange="handleFileSelect(event)">
+      <input type="file" id="botFileInput" name="file" accept=".py" style="display: none;"
+        onchange="handleFileSelect(event)">
 
       <div id="uploadStatus" style="margin-top: 12px; font-size: 13px; display: none;"></div>
 
@@ -137,18 +149,20 @@
             </td>
             <td>
               {% if bot.is_active %}
-                <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">
-                  ● Đang kích hoạt
-                </span>
+              <span class="tag"
+                style="background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4);">
+                ● Đang kích hoạt
+              </span>
               {% else %}
-                <span style="color: var(--muted); font-size: 12px;">Không kích hoạt</span>
+              <span style="color: var(--muted); font-size: 12px;">Không kích hoạt</span>
               {% endif %}
             </td>
             <td style="text-align: right;">
               {% if not bot.is_active %}
-                <button class="btn btn-sm" data-bot-id="{{ bot.id }}" onclick="activateBot(this.dataset.botId)">Kích hoạt</button>
+              <button class="btn btn-sm" data-bot-id="{{ bot.id }}" onclick="activateBot(this.dataset.botId)">Kích
+                hoạt</button>
               {% else %}
-                <span style="color: var(--muted); font-size: 12px;">Đang dùng</span>
+              <span style="color: var(--muted); font-size: 12px;">Đang dùng</span>
               {% endif %}
             </td>
           </tr>
@@ -172,6 +186,86 @@
   </div>
   <div id="user-rating-chart-container" data-url="/api/users/{{ current_user.id }}/rating-history?limit=50"></div>
 </div>
+
+<!-- Badges Showcase Section -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header flex-between">
+    <h2 class="card-title">🏅 Phòng Trưng Bày Danh Hiệu (Badges)</h2>
+    <span class="badge">{{ user_badges|length if user_badges else 0 }} Danh hiệu</span>
+  </div>
+  <div class="card-body">
+    {% if user_badges and user_badges|length > 0 %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; padding: 8px 0;">
+      {% for ub in user_badges %}
+      <div class="card" style="background: rgba(22, 27, 34, 0.7); border: 1px solid var(--border); padding: 16px; border-radius: 8px; display: flex; align-items: center; gap: 14px;">
+        <div style="font-size: 2.2rem; min-width: 48px; text-align: center;">
+          {{ ub.badge.icon if ub.badge and ub.badge.icon else '🎖️' }}
+        </div>
+        <div>
+          <strong style="color: var(--accent); font-size: 1rem; display: block;">{{ ub.badge.name if ub.badge else 'Danh hiệu' }}</strong>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 4px 0 0; line-height: 1.3;">
+            {{ ub.badge.description if ub.badge else '' }}
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 16px 0;">
+      Chưa có danh hiệu nào được mở khóa. Hãy vô địch giải đấu, đánh bại Apex Boss hoặc thi đấu $\ge$ 10 trận để nhận danh hiệu!
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+{% if is_own_profile %}
+<!-- CLI API Keys Management Section -->
+<div class="card" style="margin-bottom: 24px;">
+  <div class="card-header flex-between">
+    <div>
+      <h2 class="card-title">🔑 Khóa API Cá Nhân Cho CLI (Personal API Keys)</h2>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0;">
+        Sử dụng token này để nộp bot tự động từ CLI thông qua header <code>X-API-Key: &lt;token&gt;</code>.
+      </p>
+    </div>
+    <button class="btn btn-sm btn-primary" onclick="openCreateApiKeyModal()">+ Tạo Khóa Mới</button>
+  </div>
+  <div class="card-body">
+    {% if api_keys and api_keys|length > 0 %}
+    <div class="table-responsive">
+      <table class="table-dark" style="font-size: 13px;">
+        <thead>
+          <tr>
+            <th>Tên khóa</th>
+            <th>Tiền tố (Prefix)</th>
+            <th>Ngày tạo</th>
+            <th>Sử dụng lần cuối</th>
+            <th style="text-align: right;">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for k in api_keys %}
+          <tr>
+            <td><strong>{{ k.name }}</strong></td>
+            <td><code>{{ k.key_prefix }}...</code></td>
+            <td style="color: var(--text-muted); font-size: 12px;">{{ k.created_at.strftime('%d/%m/%Y %H:%M') if k.created_at else '-' }}</td>
+            <td style="color: var(--text-muted); font-size: 12px;">{{ k.last_used_at.strftime('%d/%m/%Y %H:%M') if k.last_used_at else 'Chưa dùng' }}</td>
+            <td style="text-align: right;">
+              <button class="btn btn-sm btn-danger" onclick="revokeApiKey({{ k.id }})">Thu hồi</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 12px 0;">
+      Bạn chưa tạo API Key nào. Hãy nhấp "+ Tạo Khóa Mới" để sử dụng CLI tự động nộp bot.
+    </p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
 
 <!-- Recent Matches History -->
 <div class="card">
@@ -204,11 +298,11 @@
           </td>
           <td>
             {% if match.winner_id == current_user.id %}
-              <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Thắng ({{ match.win_reason }})</span>
+            <span class="tag" style="background: rgba(16, 185, 129, 0.2); color: #34d399;">Thắng ({{ match.win_reason }})</span>
             {% elif match.winner_id is none %}
-              <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
+            <span class="tag" style="background: rgba(148, 163, 184, 0.2); color: #94a3b8;">Hòa</span>
             {% else %}
-              <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Thua ({{ match.win_reason }})</span>
+            <span class="tag" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">Thua ({{ match.win_reason }})</span>
             {% endif %}
           </td>
           <td>{{ match.total_turns }} lượt</td>
@@ -348,6 +442,46 @@
       } else {
         const data = await res.json();
         alert(data.detail || 'Không thể kích hoạt bot');
+      }
+    } catch (err) {
+      alert(`Lỗi: ${err.message}`);
+    }
+  }
+
+  async function openCreateApiKeyModal() {
+    const name = prompt("Nhập tên gợi nhớ cho API Key (ví dụ: CLI Laptop, Auto Upload):", "CLI Bot Upload");
+    if (!name) return;
+
+    try {
+      const res = await fetch('/api/auth/api-keys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert("Lỗi tạo API Key: " + (data.detail || "Thất bại"));
+        return;
+      }
+      prompt("Sao chép API Key của bạn (chỉ hiển thị MỘT LẦN duy nhất này):", data.token);
+      window.location.reload();
+    } catch (err) {
+      alert("Lỗi kết nối máy chủ: " + err.message);
+    }
+  }
+
+  async function revokeApiKey(keyId) {
+    if (!confirm("Bạn có chắc chắn muốn thu hồi API Key này? Tất cả các script CLI dùng key này sẽ bị từ chối.")) return;
+
+    try {
+      const res = await fetch(`/api/auth/api-keys/${keyId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json();
+        alert(data.detail || 'Không thể thu hồi API key');
       }
     } catch (err) {
       alert(`Lỗi: ${err.message}`);

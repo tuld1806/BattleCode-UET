@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 import hashlib
 import os
 import secrets
-from typing import Any, Dict
+from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from server.database import get_db
-from server.models import ApiKey, User
+from server.models import ApiKey, Badge, User, UserBadge
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -213,3 +213,110 @@ def get_me(
         "losses": current_user.losses,
         "draws": current_user.draws,
     }
+
+
+class CreateApiKeyRequest(BaseModel):
+    name: str = Field("CLI Bot Upload", max_length=64)
+
+
+@router.post("/api-keys", status_code=status.HTTP_201_CREATED)
+def create_api_key(
+    payload: CreateApiKeyRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Generate a new personal API Key for headless CLI bot uploads."""
+    raw_token = "bcuet_" + secrets.token_hex(24)
+    key_hash = hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+    api_key = ApiKey(
+        user_id=current_user.id,
+        name=payload.name.strip(),
+        key_hash=key_hash,
+        key_prefix=raw_token[:12],
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+    return {
+        "id": api_key.id,
+        "name": api_key.name,
+        "token": raw_token,
+        "prefix": api_key.key_prefix,
+        "created_at": api_key.created_at.isoformat() if api_key.created_at else None,
+    }
+
+
+@router.get("/api-keys")
+def list_api_keys(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """List all registered personal API keys for the authenticated user."""
+    keys = (
+        db.query(ApiKey)
+        .filter(ApiKey.user_id == current_user.id)
+        .order_by(ApiKey.created_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id": k.id,
+            "name": k.name,
+            "prefix": k.key_prefix,
+            "created_at": k.created_at.isoformat() if k.created_at else None,
+            "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+        }
+        for k in keys
+    ]
+
+
+@router.delete("/api-keys/{key_id}")
+def delete_api_key(
+    key_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Revoke and delete a personal API key."""
+    api_key = (
+        db.query(ApiKey)
+        .filter(ApiKey.id == key_id, ApiKey.user_id == current_user.id)
+        .first()
+    )
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"API key with id {key_id} not found.",
+        )
+    db.delete(api_key)
+    db.commit()
+    return {"message": "API key revoked successfully."}
+
+
+profile_router = APIRouter(prefix="/profile", tags=["profile"])
+
+
+@profile_router.get("/badges")
+def get_user_badges(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> List[Dict[str, Any]]:
+    """Retrieve all unlocked achievement badges for the authenticated user."""
+    user_badges = (
+        db.query(UserBadge)
+        .filter(UserBadge.user_id == current_user.id)
+        .order_by(UserBadge.earned_at.desc())
+        .all()
+    )
+    results = []
+    for ub in user_badges:
+        b = ub.badge
+        if b:
+            results.append({
+                "id": b.id,
+                "slug": b.slug,
+                "name": b.name,
+                "description": b.description,
+                "icon": b.icon,
+                "earned_at": ub.earned_at.isoformat() if ub.earned_at else None,
+            })
+    return results
