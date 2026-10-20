@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
+import hashlib
 import os
 import secrets
 from typing import Any, Dict
@@ -10,7 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from server.database import get_db
-from server.models import User
+from server.models import ApiKey, User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -36,25 +38,38 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    """Dependency that resolves the authenticated User from the active session."""
+    """Dependency that resolves the authenticated User from the active session or API Key."""
     token = get_token_from_request(request)
-    if not token or token not in ACTIVE_SESSIONS:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required",
-        )
-
-    user_id = ACTIVE_SESSIONS[token]
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    if token and token in ACTIVE_SESSIONS:
+        user_id = ACTIVE_SESSIONS[token]
+        user = db.query(User).filter(User.id == user_id).first()
+        if user:
+            return user
         # Purge stale session mapping
         ACTIVE_SESSIONS.pop(token, None)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
 
-    return user
+    # Fallback to API Key resolution (X-API-Key header or Authorization: Bearer bcuet_...)
+    raw_api_key = request.headers.get("x-api-key")
+    if not raw_api_key and token and token.startswith("bcuet_"):
+        raw_api_key = token
+
+    if raw_api_key:
+        candidate_key = raw_api_key.strip()
+        key_hash = hashlib.sha256(candidate_key.encode("utf-8")).hexdigest()
+        api_key = db.query(ApiKey).filter(ApiKey.key_hash == key_hash).first()
+        if api_key and api_key.user:
+            api_key.last_used_at = datetime.now(timezone.utc)
+            db.commit()
+            return api_key.user
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Authentication required",
+    )
+
+
+get_current_user_or_api_key = get_current_user
+
 
 
 def get_current_admin(

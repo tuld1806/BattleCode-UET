@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -123,14 +124,20 @@ def get_game_tournament_detail(slug: str, tournament_id: int, db: Session = Depe
     }
 
 
+class TournamentEnrollRequest(BaseModel):
+    """Optional payload specifying chosen bot_id for tournament enrollment."""
+    bot_id: Optional[int] = None
+
+
 @router.post("/{slug}/tournaments/{tournament_id}/enroll", response_model=Dict[str, Any])
 def enroll_in_tournament(
     slug: str,
     tournament_id: int,
+    payload: Optional[TournamentEnrollRequest] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
-    """Enroll participant into a tournament using their active game-specific bot."""
+    """Enroll participant into a tournament using their selected or active game-specific bot."""
     # 1. Admin decoupling invariant
     if current_user.is_admin:
         raise HTTPException(
@@ -153,18 +160,36 @@ def enroll_in_tournament(
             detail=f"Enrollment is closed for tournament '{tourney.name}' (current status: {tourney.status}).",
         )
 
-    # 3. Check for active bot for this game
-    active_bot = db.query(Bot).filter(
-        Bot.user_id == current_user.id,
-        or_(Bot.game_id == game.id, Bot.game_id == None),  # noqa: E711
-        Bot.is_active == True,  # noqa: E712
-    ).first()
-
-    if not active_bot:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"You must have an active bot uploaded for '{game.display_name}' to enroll.",
-        )
+    # 3. Determine bot to enroll
+    enrolled_bot: Optional[Bot] = None
+    if payload and payload.bot_id is not None:
+        chosen_bot = db.query(Bot).filter(
+            Bot.id == payload.bot_id,
+            Bot.user_id == current_user.id,
+        ).first()
+        if not chosen_bot:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Specified bot #{payload.bot_id} not found.",
+            )
+        if chosen_bot.game_id is not None and chosen_bot.game_id != game.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Specified bot does not belong to '{game.display_name}'.",
+            )
+        enrolled_bot = chosen_bot
+    else:
+        active_bot = db.query(Bot).filter(
+            Bot.user_id == current_user.id,
+            or_(Bot.game_id == game.id, Bot.game_id == None),  # noqa: E711
+            Bot.is_active == True,  # noqa: E712
+        ).first()
+        if not active_bot:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"You must have an active bot uploaded for '{game.display_name}' to enroll.",
+            )
+        enrolled_bot = active_bot
 
     # 4. Check duplicate enrollment
     existing_enrollment = db.query(TournamentEnrollment).filter(
@@ -199,7 +224,7 @@ def enroll_in_tournament(
     enrollment = TournamentEnrollment(
         tournament_id=tourney.id,
         user_id=current_user.id,
-        bot_id=active_bot.id,
+        bot_id=enrolled_bot.id,
     )
     db.add(enrollment)
     db.commit()
@@ -208,7 +233,7 @@ def enroll_in_tournament(
         "status": "enrolled",
         "tournament_id": tourney.id,
         "game_slug": slug,
-        "bot_id": active_bot.id,
+        "bot_id": enrolled_bot.id,
         "message": f"Successfully enrolled in {tourney.name}.",
     }
 

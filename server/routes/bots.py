@@ -5,13 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from engine.sandbox import validate_bot_source
 from server.database import get_db
-from server.models import Bot, Game, User
+from server.models import Bot, Game, TournamentEnrollment, User
 from server.routes.auth import get_current_user
 
 router = APIRouter(prefix="/bots", tags=["bots"])
@@ -75,10 +75,10 @@ async def upload_bot(
         default_game = db.query(Game).filter(Game.is_active == True).order_by(Game.id.asc()).first()  # noqa: E712
         target_game_id = default_game.id if default_game else 1
 
-    # Deactivate existing active bots for this user on this game
+    # Deactivate existing active bots for this user on this game only
     db.query(Bot).filter(
         Bot.user_id == current_user.id,
-        or_(Bot.game_id == target_game_id, Bot.game_id == None),  # noqa: E711
+        Bot.game_id == target_game_id,
         Bot.is_active == True,  # noqa: E712
     ).update({"is_active": False})
 
@@ -105,25 +105,28 @@ async def upload_bot(
 
 @router.get("", response_model=List[Dict[str, Any]])
 def list_my_bots(
+    game_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> List[Dict[str, Any]]:
-    """List all bot submissions uploaded by the authenticated user."""
-    bots = (
-        db.query(Bot)
-        .filter(Bot.user_id == current_user.id)
-        .order_by(Bot.uploaded_at.desc())
-        .all()
-    )
-    return [
-        {
+    """List all bot submissions uploaded by the authenticated user, optionally filtered by game_id."""
+    query = db.query(Bot).filter(Bot.user_id == current_user.id)
+    if game_id is not None:
+        query = query.filter(Bot.game_id == game_id)
+    bots = query.order_by(Bot.uploaded_at.desc()).all()
+    results = []
+    for b in bots:
+        enrollments = db.query(TournamentEnrollment).filter(TournamentEnrollment.bot_id == b.id).all()
+        enrolled_tournaments = [e.tournament.name for e in enrollments if e.tournament]
+        results.append({
             "id": b.id,
             "filename": b.filename,
+            "game_id": b.game_id,
             "is_active": b.is_active,
             "uploaded_at": b.uploaded_at.isoformat(),
-        }
-        for b in bots
-    ]
+            "enrolled_tournaments": enrolled_tournaments,
+        })
+    return results
 
 
 @router.get("/active")
@@ -170,7 +173,8 @@ def activate_bot(
         )
 
     db.query(Bot).filter(
-        Bot.user_id == current_user.id
+        Bot.user_id == current_user.id,
+        Bot.game_id == bot.game_id,
     ).update({"is_active": False})
 
     bot.is_active = True
