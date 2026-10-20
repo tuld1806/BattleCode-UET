@@ -376,9 +376,13 @@ def get_game_leaderboard(
         user = db.query(User).filter(User.id == profile.user_id).first()
         if not user or user.is_admin:
             continue
-        has_active = any(
-            bot.is_active for bot in db.query(Bot).filter(Bot.user_id == user.id).all()
-        )
+
+        # Strict requirement: user must have at least 1 bot for this game
+        user_bots = db.query(Bot).filter(Bot.user_id == user.id, Bot.game_id == game.id).all()
+        if not user_bots:
+            continue
+
+        has_active = any(b.is_active for b in user_bots)
         entries.append({
             "id": user.id,
             "username": user.username,
@@ -389,28 +393,6 @@ def get_game_leaderboard(
             "has_active_bot": has_active,
         })
         seen_user_ids.add(user.id)
-
-    # Fallback: include registered non-admin users without a GameProfile
-    fallback_users = (
-        db.query(User)
-        .filter(User.is_admin == False)  # noqa: E712
-        .all()
-    )
-    for u in fallback_users:
-        if u.id not in seen_user_ids:
-            has_active = any(
-                bot.is_active for bot in db.query(Bot).filter(Bot.user_id == u.id).all()
-            )
-            entries.append({
-                "id": u.id,
-                "username": u.username,
-                "elo": u.elo if u.elo is not None else 1200,
-                "wins": u.wins if u.wins is not None else 0,
-                "losses": u.losses if u.losses is not None else 0,
-                "draws": u.draws if u.draws is not None else 0,
-                "has_active_bot": has_active,
-            })
-            seen_user_ids.add(u.id)
 
     # Sort descending by elo, then wins, then ascending by user id
     entries.sort(key=lambda x: (x["elo"], x["wins"], -x["id"]), reverse=True)
