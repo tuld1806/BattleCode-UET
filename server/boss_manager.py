@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from typing import Any, List
+from typing import Any, List, Optional
 from sqlalchemy.orm import Session
 
 from server.bosses import BOSS_REGISTRY, get_all_bosses, get_boss
@@ -159,12 +159,13 @@ def deploy_boss(db: Session, boss_slug: str, game_id: int = 1) -> dict[str, Any]
     }
 
 
-def retract_boss(db: Session, boss_slug: str) -> dict[str, Any]:
+def retract_boss(db: Session, boss_slug: str, game_id: Optional[int] = None) -> dict[str, Any]:
     """Retract a registered boss bot by deactivating its bot records.
 
     Args:
         db: Active SQLAlchemy database session.
         boss_slug: Identifier slug of the boss to retract.
+        game_id: Optional game ID to scope deactivation to.
 
     Returns:
         Updated status dictionary of the retracted boss.
@@ -185,7 +186,10 @@ def retract_boss(db: Session, boss_slug: str) -> dict[str, Any]:
         user_id = user.id
         elo = user.elo
         user.is_admin = False
-        bots = db.query(Bot).filter(Bot.user_id == user.id).all()
+        bot_query = db.query(Bot).filter(Bot.user_id == user.id)
+        if game_id is not None:
+            bot_query = bot_query.filter(Bot.game_id == game_id)
+        bots = bot_query.all()
         for bot in bots:
             bot.is_active = False
         db.commit()

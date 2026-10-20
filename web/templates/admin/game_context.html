@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+
+{% block title %}Quản trị Bộ môn {{ game.display_name }} - Admin{% endblock %}
+
+{% block content %}
+<div class="page-header flex-between">
+  <div>
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+      <a href="/admin/games" style="color: var(--text-muted); font-size: 13px;">&larr; Tất cả trò chơi</a>
+      <span style="color: var(--text-muted);">/</span>
+      <span style="font-size: 13px; color: var(--accent);">{{ game.slug }}</span>
+    </div>
+    <h1 class="page-title">⚙️ Quản Trị Bộ Môn: {{ game.display_name }}</h1>
+    <div class="page-subtitle">Quản trị Boss chuẩn mực, giải đấu và bot dự thi của bộ môn <code>{{ game.slug }}</code></div>
+  </div>
+
+  <div style="display: flex; gap: 10px;">
+    <a href="/games/{{ game.slug }}" class="btn btn-secondary" target="_blank">
+      👁️ Xem Giao Diện Người Chơi
+    </a>
+  </div>
+</div>
+
+<div class="grid grid-2" style="margin-bottom: 24px;">
+  <!-- Panel 1: Benchmark Boss Deployment -->
+  <div class="card">
+    <div class="card-header flex-between">
+      <h2 class="card-title">🤖 Triển Khai Benchmark Boss</h2>
+      <span class="badge">{{ bosses|length }} Boss có sẵn</span>
+    </div>
+    <div class="card-body">
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+        Các Boss được triển khai trong bộ môn này sẽ xuất hiện trên sàn Đấu Giao Hữu 24/7 để người chơi thử nghiệm bot.
+      </p>
+
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Boss</th>
+              <th>Cấp độ</th>
+              <th>Elo</th>
+              <th>Trạng thái</th>
+              <th style="text-align: right;">Hành động</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in bosses %}
+            <tr>
+              <td>
+                <strong>{{ b.display_name }}</strong>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">{{ b.description }}</div>
+              </td>
+              <td><span class="badge badge-outline">{{ b.level }}</span></td>
+              <td><b>{{ b.elo }}</b></td>
+              <td>
+                {% if b.is_deployed %}
+                  <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">Đang mở</span>
+                {% else %}
+                  <span class="badge" style="background: rgba(139, 148, 158, 0.2); color: var(--text-muted);">Đã ẩn</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                {% if b.is_deployed %}
+                <button class="btn btn-sm btn-danger" onclick="toggleBoss('{{ b.slug }}', 'retract')">
+                  Thu hồi
+                </button>
+                {% else %}
+                <button class="btn btn-sm btn-primary" onclick="toggleBoss('{{ b.slug }}', 'deploy')">
+                  Triển khai
+                </button>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 2: Create Tournament for this Game -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">🏆 Tạo Giải Đấu Mới Cho Bộ Môn Này</h2>
+    </div>
+    <div class="card-body">
+      <form id="createTourneyForm" onsubmit="handleCreateTournament(event)">
+        <div class="form-group" style="margin-bottom: 12px;">
+          <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Tên giải đấu *</label>
+          <input type="text" id="tName" class="form-control" required placeholder="VD: Giải Đấu Mùa Thu - {{ game.display_name }}" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Giờ mở FFA</label>
+            <input type="text" id="tStartTime" class="form-control" value="19:00" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          </div>
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Giờ đóng FFA</label>
+            <input type="text" id="tEndTime" class="form-control" value="21:00" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Top tuyển Bracket Playoff</label>
+            <select id="tBracketTop" class="form-control" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+              <option value="4">Top 4 (Bán kết)</option>
+              <option value="8" selected>Top 8 (Tứ kết)</option>
+              <option value="16">Top 16 (Vòng 16)</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px;">Hệ số điểm Elo</label>
+            <input type="number" step="0.1" id="tEloMultiplier" class="form-control" value="1.0" style="width: 100%; padding: 8px 12px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 6px; color: var(--text);">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%;">
+          ✨ Khởi Tạo Giải Đấu Cho {{ game.display_name }}
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Tournaments and Submissions Lists -->
+<div class="grid grid-2">
+  <div class="card">
+    <div class="card-header flex-between">
+      <h2 class="card-title">📜 Giải Đấu Hiện Tại</h2>
+      <span class="badge">{{ tournaments|length }}</span>
+    </div>
+    <div class="card-body">
+      {% if tournaments %}
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tên</th>
+              <th>Trạng thái</th>
+              <th>Thí sinh</th>
+              <th style="text-align: right;">Quản lý</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in tournaments %}
+            <tr>
+              <td><strong>{{ t.name }}</strong></td>
+              <td><span class="badge">{{ t.status }}</span></td>
+              <td>{{ t.enrollments|length }}</td>
+              <td style="text-align: right;">
+                <a href="/admin/tournaments/{{ t.id }}" class="btn btn-sm btn-secondary">Chi tiết</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Chưa có giải đấu nào được tạo cho bộ môn này.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header flex-between">
+      <h2 class="card-title">💻 Bot Đã Nộp Cho Bộ Môn</h2>
+      <span class="badge">{{ bots|length }} Bot</span>
+    </div>
+    <div class="card-body">
+      {% if bots %}
+      <div class="table-responsive" style="max-height: 350px; overflow-y: auto;">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Người chơi</th>
+              <th>Tên tệp</th>
+              <th>Trạng thái</th>
+              <th>Ngày nộp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for bot in bots %}
+            <tr>
+              <td>{{ bot.user.username if bot.user else '-' }}</td>
+              <td><code>{{ bot.filename }}</code></td>
+              <td>
+                {% if bot.is_active %}
+                <span class="badge" style="background: rgba(35, 134, 54, 0.2); color: #3fb950;">Giao Hữu</span>
+                {% else %}
+                <span class="badge" style="background: rgba(139, 148, 158, 0.2); color: var(--text-muted);">Lưu trữ</span>
+                {% endif %}
+              </td>
+              <td style="font-size: 0.8rem; color: var(--text-muted);">
+                {{ bot.uploaded_at.strftime('%d/%m/%Y %H:%M') if bot.uploaded_at else '-' }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p style="color: var(--text-muted); font-size: 0.9rem;">Chưa có người chơi nào nộp bot cho bộ môn này.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+async function toggleBoss(bossSlug, action) {
+  try {
+    const res = await fetch(`/api/admin/games/{{ game.slug }}/bosses/${action}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ boss_slug: bossSlug })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Lỗi: " + (err.detail || "Không thể thực hiện"));
+      return;
+    }
+    location.reload();
+  } catch (e) {
+    alert("Lỗi kết nối máy chủ");
+  }
+}
+
+async function handleCreateTournament(event) {
+  event.preventDefault();
+  const name = document.getElementById("tName").value;
+  const ffa_start_time = document.getElementById("tStartTime").value;
+  const ffa_end_time = document.getElementById("tEndTime").value;
+  const bracket_top_n = parseInt(document.getElementById("tBracketTop").value, 10);
+  const elo_multiplier = parseFloat(document.getElementById("tEloMultiplier").value);
+
+  try {
+    const res = await fetch(`/api/admin/games/{{ game.slug }}/tournaments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name,
+        ffa_start_time,
+        ffa_end_time,
+        bracket_top_n,
+        elo_multiplier,
+        ffa_day_count: 7,
+        enrollment_open: true
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Lỗi tạo giải đấu: " + (err.detail || "Thất bại"));
+      return;
+    }
+    alert("Tạo giải đấu thành công!");
+    location.reload();
+  } catch (e) {
+    alert("Lỗi kết nối máy chủ");
+  }
+}
+</script>
+{% endblock %}

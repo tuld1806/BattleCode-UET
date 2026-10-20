@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from server.boss_manager import get_all_bosses_status
 from server.database import get_db, init_db
 from server.models import Bot, BracketMatch, Game, GameProfile, Match, Tournament, TournamentEnrollment, User
 from server.routes import admin, admin_games, admin_tournaments, auth, bots, leaderboard, matches, games
@@ -563,6 +564,50 @@ def admin_games_upload_page(
         request=request,
         name="admin/game_upload.html",
         context={
+            "current_user": admin_auth,
+        },
+    )
+
+
+@app.get("/admin/games/{slug}", response_class=HTMLResponse, tags=["web"])
+def admin_game_context_page(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Render the contextual administration portal for a specific game."""
+    admin_auth = _require_admin_web_user(request, db, f"/admin/games/{slug}")
+    if isinstance(admin_auth, Response):
+        return admin_auth
+
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Game '{slug}' not found.",
+        )
+
+    bosses = get_all_bosses_status(db, game_id=game.id)
+    tournaments = (
+        db.query(Tournament)
+        .filter(Tournament.game_id == game.id)
+        .order_by(Tournament.created_at.desc())
+        .all()
+    )
+    bots = (
+        db.query(Bot)
+        .filter(Bot.game_id == game.id)
+        .order_by(Bot.id.desc())
+        .all()
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/game_context.html",
+        context={
+            "game": game,
+            "bosses": bosses,
+            "tournaments": tournaments,
+            "bots": bots,
             "current_user": admin_auth,
         },
     )
