@@ -11,7 +11,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from server.database import get_db
-from server.models import Bot, Match, TournamentSetting, User
+from server.models import Bot, GameProfile, Match, TournamentSetting, User
 from server.queue import execute_match_job
 from server.routes.auth import get_current_user
 from server.tournament import is_ffa_portal_open
@@ -21,8 +21,9 @@ router = APIRouter(prefix="/matches", tags=["matches"])
 
 
 class ChallengeRequest(BaseModel):
-    """Pydantic payload for initiating an FFA challenge match."""
+    """Pydantic payload for initiating a challenge match."""
     opponent_id: int
+    game_id: Optional[int] = 1
 
 
 def _is_portal_open_now(db: Session) -> bool:
@@ -92,43 +93,67 @@ def challenge_opponent(
             detail="Cannot challenge an admin account.",
         )
 
-    if not _is_portal_open_now(db):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="FFA portal is currently closed for ranked matches.",
-        )
+    target_game_id = payload.game_id or 1
 
-    # Verify both users have active bot submissions
+    # Verify both users have active friendly bot submissions for target_game_id
     bot1 = (
         db.query(Bot)
-        .filter(Bot.user_id == current_user.id, Bot.is_active == True)  # noqa: E712
+        .filter(
+            Bot.user_id == current_user.id,
+            or_(Bot.game_id == target_game_id, Bot.game_id == None),  # noqa: E711
+            Bot.is_active == True,  # noqa: E712
+        )
         .first()
     )
     if not bot1:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You do not have an active bot uploaded.",
+            detail="You do not have an active bot uploaded for this game.",
         )
 
     bot2 = (
         db.query(Bot)
-        .filter(Bot.user_id == opponent.id, Bot.is_active == True)  # noqa: E712
+        .filter(
+            Bot.user_id == opponent.id,
+            or_(Bot.game_id == target_game_id, Bot.game_id == None),  # noqa: E711
+            Bot.is_active == True,  # noqa: E712
+        )
         .first()
     )
     if not bot2:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Opponent does not have an active bot uploaded.",
+            detail="Opponent does not have an active bot uploaded for this game.",
         )
+
+    # Get or create GameProfile for both users
+    gp1 = db.query(GameProfile).filter(
+        GameProfile.user_id == current_user.id,
+        GameProfile.game_id == target_game_id,
+    ).first()
+    if not gp1:
+        gp1 = GameProfile(user_id=current_user.id, game_id=target_game_id, elo=current_user.elo or 1200)
+        db.add(gp1)
+        db.flush()
+
+    gp2 = db.query(GameProfile).filter(
+        GameProfile.user_id == opponent.id,
+        GameProfile.game_id == target_game_id,
+    ).first()
+    if not gp2:
+        gp2 = GameProfile(user_id=opponent.id, game_id=target_game_id, elo=opponent.elo or 1200)
+        db.add(gp2)
+        db.flush()
 
     # Create pending Match record
     match = Match(
+        game_id=target_game_id,
         player1_id=current_user.id,
         player2_id=opponent.id,
         bot1_id=bot1.id,
         bot2_id=bot2.id,
-        p1_elo_before=current_user.elo,
-        p2_elo_before=opponent.elo,
+        p1_elo_before=gp1.elo,
+        p2_elo_before=gp2.elo,
         is_bracket=False,
     )
     db.add(match)
@@ -148,6 +173,7 @@ def challenge_opponent(
         "status": "queued",
         "player1_id": current_user.id,
         "player2_id": opponent.id,
+        "game_id": target_game_id,
     }
 
 

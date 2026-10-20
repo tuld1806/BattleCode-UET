@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -75,6 +75,70 @@ def get_game_detail(slug: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
         "icon_path": game.icon_path,
         "config": config_data,
         "tournaments": tournaments_data,
+    }
+
+
+@router.get("/{slug}/friendly-opponents", response_model=Dict[str, Any])
+def get_friendly_opponents(
+    slug: str,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Retrieve deployed benchmark bosses and active human players available for friendly challenge."""
+    game = db.query(Game).filter(Game.slug == slug).first()
+    if not game:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Game '{slug}' not found.")
+
+    from server.boss_manager import get_all_bosses_status
+    bosses = get_all_bosses_status(db, game_id=game.id)
+
+    # Active human players with active bot for this game
+    active_bots = (
+        db.query(Bot)
+        .join(User, Bot.user_id == User.id)
+        .filter(
+            Bot.game_id == game.id,
+            Bot.is_active == True,
+            User.is_admin == False,
+        )
+        .all()
+    )
+
+    current_user_id = None
+    if request:
+        token = request.cookies.get("session_token")
+        from server.routes.auth import ACTIVE_SESSIONS
+        if token and token in ACTIVE_SESSIONS:
+            current_user_id = ACTIVE_SESSIONS[token]
+
+    seen_users = set()
+    players_list = []
+    for b in active_bots:
+        u = b.user
+        if not u or u.id in seen_users or (current_user_id and u.id == current_user_id):
+            continue
+        # Get GameProfile elo
+        gp = db.query(GameProfile).filter(GameProfile.user_id == u.id, GameProfile.game_id == game.id).first()
+        elo = gp.elo if gp else u.elo
+        wins = gp.wins if gp else u.wins
+        losses = gp.losses if gp else u.losses
+        draws = gp.draws if gp else u.draws
+
+        players_list.append({
+            "id": u.id,
+            "username": u.username,
+            "elo": elo,
+            "wins": wins,
+            "losses": losses,
+            "draws": draws,
+            "has_active_bot": True,
+        })
+        seen_users.add(u.id)
+
+    return {
+        "game_slug": slug,
+        "bosses": bosses,
+        "players": players_list,
     }
 
 

@@ -199,6 +199,35 @@ def execute_match_job(
             profile1.draws += 1
             profile2.draws += 1
 
+        # Check and award badges
+        try:
+            from server.models import Badge, UserBadge
+            # 1. Boss Slayer: winner defeated Level 5 Apex Boss
+            if winner_code == 1 and "[Boss] Level 5: Apex Master" in player2.username:
+                slayer_b = db.query(Badge).filter(Badge.slug == "boss_slayer").first()
+                if slayer_b:
+                    has_b = db.query(UserBadge).filter(UserBadge.user_id == player1.id, UserBadge.badge_id == slayer_b.id).first()
+                    if not has_b:
+                        db.add(UserBadge(user_id=player1.id, badge_id=slayer_b.id))
+            elif winner_code == 2 and "[Boss] Level 5: Apex Master" in player1.username:
+                slayer_b = db.query(Badge).filter(Badge.slug == "boss_slayer").first()
+                if slayer_b:
+                    has_b = db.query(UserBadge).filter(UserBadge.user_id == player2.id, UserBadge.badge_id == slayer_b.id).first()
+                    if not has_b:
+                        db.add(UserBadge(user_id=player2.id, badge_id=slayer_b.id))
+
+            # 2. Active Player: player reached 10 total matches
+            act_b = db.query(Badge).filter(Badge.slug == "active_player").first()
+            if act_b:
+                for p, prof in [(player1, profile1), (player2, profile2)]:
+                    total_m = prof.wins + prof.losses + prof.draws
+                    if total_m >= 10:
+                        has_b = db.query(UserBadge).filter(UserBadge.user_id == p.id, UserBadge.badge_id == act_b.id).first()
+                        if not has_b:
+                            db.add(UserBadge(user_id=p.id, badge_id=act_b.id))
+        except Exception:
+            pass
+
         db.commit()
         return match_result
 
