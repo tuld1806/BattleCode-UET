@@ -11,6 +11,60 @@ from server.models import Bot, Match, TournamentSetting, User
 from server.routes.auth import ACTIVE_SESSIONS
 
 
+def test_upload_assigns_game_and_preserves_other_game_bot(client, tmp_path, monkeypatch):
+    """A submission must remain scoped to its game and support tournament enrollment."""
+    from server.database import seed_default_game
+    from server.models import Game, GameProfile
+    monkeypatch.chdir(tmp_path)
+    db = SessionLocal()
+    seed_default_game(db_session=db)
+    user = User(username="scoped_upload")
+    other = Game(slug="other-ui", display_name="Other")
+    db.add_all([user, other])
+    db.commit()
+    old = Bot(user_id=user.id, game_id=other.id, filename="old.py", filepath="old.py", is_active=True)
+    db.add(old)
+    db.commit()
+    user_id, old_id = user.id, old.id
+    ACTIVE_SESSIONS["scoped-upload-token"] = user_id
+    client.cookies.set("session_token", "scoped-upload-token")
+    response = client.post("/api/bots/upload", data={"game_id": "1"}, files={"file": ("bot.py", b"def get_move(board, my_player, history):\n    return ((0, 0), (1, 0))\n", "text/plain")})
+    assert response.status_code == 201
+    db.expire_all()
+    assert db.get(Bot, response.json()["id"]).game_id == 1
+    assert db.get(Bot, old_id).is_active
+    assert db.query(GameProfile).filter_by(user_id=user_id, game_id=1).one()
+    assert client.get("/profile").status_code == 200
+    db.close()
+
+
+def test_bracket_replay_page_and_missing_artifact(client, tmp_path, monkeypatch):
+    """BO3 links render a valid visualizer and reject missing or invalid games."""
+    import json
+    import server.main as web_main
+    from server.models import BracketMatch
+    db = SessionLocal()
+    p1, p2 = User(username="replay_red"), User(username="replay_blue")
+    db.add_all([p1, p2])
+    db.commit()
+    bracket = BracketMatch(round_name="Final", player1_id=p1.id, player2_id=p2.id, status="completed")
+    db.add(bracket)
+    db.commit()
+    bracket_id = bracket.id
+    (tmp_path / "replays").mkdir()
+    (tmp_path / "replays" / f"bracket_{bracket_id}_game_2.json").write_text(json.dumps({"moves": []}), encoding="utf-8")
+    monkeypatch.setattr(web_main, "BASE_DIR", tmp_path)
+    response = client.get(f"/api/bracket-replays/{bracket_id}/2")
+    assert response.status_code == 200
+    assert response.json()["player1"]["username"] == "replay_blue"
+    page = client.get(f"/replay/bracket_{bracket_id}_game_2")
+    assert page.status_code == 200
+    assert f'/api/bracket-replays/{bracket_id}/2' in page.text
+    assert client.get(f"/api/bracket-replays/{bracket_id}/4").status_code == 404
+    assert client.get(f"/api/bracket-replays/{bracket_id}/1").status_code == 404
+    db.close()
+
+
 @pytest.fixture(autouse=True)
 def setup_clean_db():
     """Reset database tables before each test case."""

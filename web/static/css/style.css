@@ -1,6 +1,7 @@
 /* Battlecode 9x9 RPS Platform - Minimalist Slate/Charcoal Stylesheet */
 
 :root {
+  --bg-card: #161b22;
   /* Slate/Charcoal Design Tokens */
   --bg-main: #0d1117;
   --bg-surface: #161b22;
@@ -1242,4 +1243,33 @@ a:hover {
 }
 .toast-close:hover {
   color: var(--text-primary);
+}
+
+/* Shared navigation and responsive management layouts. */
+.skip-link { position: fixed; left: 16px; top: -80px; z-index: 2000; padding: 12px; background: var(--bg-surface); }
+.skip-link:focus { top: 8px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.admin-subnav { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--bg-surface); }
+.admin-subnav a { padding: 8px 12px; border-radius: var(--radius); color: var(--text-muted); }
+.admin-subnav a[aria-current], .admin-subnav a:hover { color: var(--text-primary); background: var(--panel-3); }
+.management-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 24px; margin-bottom: 24px; }
+.lifecycle-controls { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--line); }
+.table-responsive { overflow-x: auto; max-width: 100%; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 12px; text-align: left; border-bottom: 1px solid var(--line); }
+.form-control { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-main); color: var(--text-primary); font: inherit; }
+.btn { cursor: pointer; }
+.btn:disabled { cursor: wait; opacity: .55; }
+.card, .management-grid > *, .tourney-content-grid > * { min-width: 0; }
+@media (max-width: 768px) {
+  .navbar, .nav-links, .nav-user, .page-header, .tourney-header-main, .hero-top, .tourney-badges { flex-wrap: wrap; gap: 12px; }
+  .navbar { position: relative; padding: 16px; }
+  .nav-links { width: 100%; justify-content: flex-start; }
+  .management-grid { grid-template-columns: minmax(0, 1fr); }
+  .tourney-hero { padding: 16px; }
+  .tourney-title { font-size: 1.6rem; overflow-wrap: anywhere; }
+  .btn { min-height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

@@ -30,6 +30,7 @@ class ReplayVisualizer {
    */
   constructor(options = {}) {
     this.matchId = options.matchId;
+    this.replayUrl = options.replayUrl;
     this.replayData = options.replayData || null;
     this.containerId = options.containerId || 'visualizerApp';
 
@@ -185,7 +186,7 @@ class ReplayVisualizer {
   /** Fetch replay JSON data from server API */
   async fetchReplay(matchId) {
     try {
-      const res = await fetch(`/api/matches/${matchId}/replay`);
+      const res = await fetch(this.replayUrl || `/api/matches/${matchId}/replay`);
       if (!res.ok) {
         throw new Error(`Failed to load replay (HTTP ${res.status})`);
       }
@@ -202,6 +203,10 @@ class ReplayVisualizer {
   /** Precompute board snapshots across all turns for fast scrubbing */
   loadReplay(data) {
     this.replayData = data;
+    for (const [seat, id] of [['player1', 'p1Name'], ['player2', 'p2Name']]) {
+      const label = document.getElementById(id);
+      if (label && data[seat]) label.textContent = data[seat].username;
+    }
     this.moves = data.moves || [];
     this.totalTurns = this.moves.length;
 

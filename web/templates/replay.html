@@ -105,11 +105,12 @@
 <script src="/static/js/visualizer.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const matchId = {{ match_id }};
-    const visualizer = new ReplayVisualizer({ matchId: matchId });
+    const matchId = {{ match_id | tojson }};
+    const visualizer = new ReplayVisualizer({ matchId: matchId, replayUrl: {{ replay_url | default(none) | tojson }} });
 
     // Update player names from match replay once fetched
     try {
+      if (typeof matchId !== 'number') return;
       const res = await fetch(`/api/matches/${matchId}`);
       if (res.ok) {
         const m = await res.json();

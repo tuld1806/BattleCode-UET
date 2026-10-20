@@ -61,6 +61,15 @@
         </div>
 
         <div class="rules-grid">
+          {% if game.slug == 'rps-chess' %}
+          <div class="rule-box">
+            <h4>Luật RPS Chess 9×9</h4>
+            <p>Mỗi bên có 3 Rock, 3 Paper và 3 Scissors. Mỗi lượt đi một ô theo 8 hướng. Rock thắng Scissors, Scissors thắng Paper, Paper thắng Rock; quân cùng loại chặn nhau.</p>
+            <p>Đỏ thắng khi tới i9, Xanh thắng khi tới a1; hoặc loại hết một loại quân của đối thủ. Sau 200 lượt, bên còn nhiều quân hơn thắng; bằng nhau thì hòa.</p>
+            <p>Bot trả về <code>((from_row, from_col), (to_row, to_col))</code>, chỉ số hàng/cột từ 0 đến 8.</p>
+            <a href="/profile" class="btn btn-primary">Nộp bot của bạn</a>
+          </div>
+          {% endif %}
           <div class="rule-box">
             <h4>⏱️ Giới hạn thời gian</h4>
             <p>1.0 giây tối đa cho mỗi lượt tính toán (per-turn timeout). Bot chạy quá thời gian sẽ bị xử thua kỹ thuật (forfeit).</p>
@@ -82,6 +91,7 @@
         <span class="badge">{{ profiles|length }} kỳ thủ đã ghi danh</span>
       </div>
       <div class="card-body">
+        <div id="game-rating-chart" aria-label="Lịch sử Elo theo bộ môn"></div>
         {% if profiles %}
           <div class="table-responsive">
             <table class="table leaderboard-table">
@@ -406,6 +416,7 @@
 </style>
 
 <script>
+let ratingLoaded = false;
 function switchTab(targetId) {
   document.querySelectorAll('.tab-pane').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -414,6 +425,10 @@ function switchTab(targetId) {
   const targetBtn = document.getElementById('btn-' + targetId);
   if (targetPane) targetPane.classList.add('active');
   if (targetBtn) targetBtn.classList.add('active');
+  if (targetId === 'tab-leaderboard' && !ratingLoaded) {
+    RatingChart.fetchAndRender('game-rating-chart', '/api/games/{{ game.slug }}/rating-history');
+    ratingLoaded = true;
+  }
 }
 
 async function enrollTournament(gameSlug, tourneyId) {
@@ -435,4 +450,8 @@ async function enrollTournament(gameSlug, tourneyId) {
   }
 }
 </script>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/rating_chart.js"></script>
 {% endblock %}

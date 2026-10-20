@@ -8,7 +8,7 @@
     <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
       <a href="/admin/tournaments" style="color: var(--text-muted); font-size: 13px;">&larr; Quay lại danh sách giải đấu</a>
       <span style="color: var(--border-subtle);">|</span>
-      <span class="tag" style="background: rgba(88, 166, 255, 0.15); color: #58a6ff;">{{ tournament.game_slug or 'RPS Chess' }}</span>
+      <span class="tag" style="background: rgba(88, 166, 255, 0.15); color: #58a6ff;">{{ tournament.game.display_name if tournament.game else 'RPS Chess' }}</span>
       {% if tournament.status == 'open' %}
         <span class="portal-badge open"><span class="dot"></span> Đang mở đăng ký</span>
       {% elif tournament.status == 'running' %}
@@ -27,14 +27,14 @@
     <button class="btn btn-sm btn-success btn-export-csv" onclick="exportBracketScoresCsv({{ tournament.id if tournament else '' }})" title="Tải file CSV (UTF-8-SIG) mở trực tiếp trên Excel">
       📊 Xuất Bảng Điểm (CSV)
     </button>
-    <a href="/bracket{% if tournament %}?tournament_id={{ tournament.id }}{% endif %}" class="btn btn-sm">
+    <a href="/games/{{ tournament.game.slug }}/tournaments/{{ tournament.id }}" class="btn btn-sm">
       🏆 Xem Cây Nhánh đấu
     </a>
   </div>
 </div>
 
 <!-- Tournament Overview Grid -->
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 24px;">
+<div class="management-grid">
   <!-- Left: Bracket & Progression Control -->
   <div class="card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -47,10 +47,19 @@
     </p>
 
     <div style="display: flex; gap: 12px; align-items: center;">
-      <button class="btn btn-danger" onclick="openBracketPasswordModal({{ tournament.id if tournament else '' }})" style="padding: 10px 18px; font-weight: 600;">
+      <button class="btn btn-danger" {% if tournament.status not in ['open', 'running'] %}disabled{% endif %} onclick="openBracketPasswordModal({{ tournament.id if tournament else '' }})" style="padding: 10px 18px; font-weight: 600;">
         ⚡ Khởi động / Tạo lại Nhánh đấu Bracket
       </button>
       <div id="bracketStatusMsg" style="font-size: 13px; color: var(--text-muted);"></div>
+    </div>
+    <div class="lifecycle-controls">
+      {% if tournament.status == 'open' %}
+      <button class="btn btn-primary" data-status="running" onclick="changeTournamentStatus(this)">Bắt đầu vòng FFA</button>
+      {% endif %}
+      {% if tournament.status in ['open', 'running', 'bracket'] %}
+      <button class="btn" data-status="finished" onclick="changeTournamentStatus(this)">Kết thúc giải đấu</button>
+      {% endif %}
+      <p id="tournament-feedback" role="status" aria-live="polite"></p>
     </div>
   </div>
 
@@ -78,6 +87,19 @@
 </div>
 
 <!-- Playoff Bracket Matches Table Card -->
+<section class="card" style="margin-bottom: 24px;">
+  <h2 class="card-title">Tuyển thủ đã ghi danh</h2>
+  <div class="table-responsive">
+    <table class="table">
+      <thead><tr><th>Người chơi</th><th>Bot thi đấu</th><th>Thời gian ghi danh</th></tr></thead>
+      <tbody>
+      {% for enrollment in enrollments %}
+      <tr><td><a href="/profile/{{ enrollment.user_id }}">{{ enrollment.user.username }}</a></td><td>{{ enrollment.bot.filename if enrollment.bot else 'Chưa có bot' }}</td><td>{{ enrollment.enrolled_at.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+      {% else %}<tr><td colspan="3">Chưa có tuyển thủ. <a href="/games/{{ tournament.game.slug }}/tournaments/{{ tournament.id }}">Mở trang ghi danh</a></td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 <div class="card" style="margin-bottom: 24px;">
   <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
     <div>
@@ -89,10 +111,10 @@
 
     <!-- Match Execution Toolbar -->
     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-      <button id="btnRunRound" class="btn btn-sm btn-primary" onclick="runBracketRound({{ tournament.id if tournament else '' }})">
+      <button id="btnRunRound" {% if tournament.status != 'bracket' or not bracket_matches %}disabled{% endif %} class="btn btn-sm btn-primary" onclick="runBracketRound({{ tournament.id if tournament else '' }})">
         ▶️ Chạy Vòng Hiện Tại
       </button>
-      <button id="btnRunAll" class="btn btn-sm btn-warning" onclick="runAllBracketRounds({{ tournament.id if tournament else '' }})">
+      <button id="btnRunAll" {% if tournament.status != 'bracket' or not bracket_matches %}disabled{% endif %} class="btn btn-sm btn-warning" onclick="runAllBracketRounds({{ tournament.id if tournament else '' }})">
         ⏩ Chạy Toàn Bộ (Run All)
       </button>
       <button class="btn btn-sm btn-outline btn-export-csv" onclick="exportBracketScoresCsv({{ tournament.id if tournament else '' }})" title="Tải bảng điểm CSV chuẩn hóa">
@@ -196,4 +218,22 @@
 
 {% block scripts %}
 <script src="/static/js/admin_bracket.js"></script>
+<script>
+async function changeTournamentStatus(button) {
+  const feedback = document.getElementById('tournament-feedback');
+  if (button.dataset.status === 'finished' && !confirm('Kết thúc giải đấu? Giải đã kết thúc không thể mở lại.')) return;
+  button.disabled = true;
+  feedback.textContent = 'Đang cập nhật trạng thái…';
+  try {
+    const response = await fetch('/api/admin/tournaments/{{ tournament.id }}/set-status', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: button.dataset.status})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Không thể cập nhật. Vui lòng thử lại.');
+    window.location.reload();
+  } catch (error) { feedback.textContent = error.message; }
+  finally { button.disabled = false; }
+}
+</script>
 {% endblock %}

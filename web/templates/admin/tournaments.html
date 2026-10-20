@@ -13,7 +13,7 @@
   </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+<div class="management-grid">
   <!-- Tournaments List -->
   <div class="card">
     <div class="card-header flex-between">
@@ -76,7 +76,7 @@
 
     <form id="createTourneyForm" onsubmit="handleCreateTournament(event)" style="padding-top: 10px;">
       <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label">Chọn Bộ môn Trò chơi</label>
+        <label class="form-label" for="tourney_game_id">Chọn Bộ môn Trò chơi</label>
         <select id="tourney_game_id" name="game_id" class="form-control" required style="background: var(--bg-card); color: var(--text);">
           {% for g in games %}
             <option value="{{ g.id }}">{{ g.display_name }} ({{ g.slug }})</option>
@@ -85,32 +85,37 @@
       </div>
 
       <div class="form-group" style="margin-bottom: 14px;">
-        <label class="form-label">Tên Giải Đấu</label>
+        <label class="form-label" for="tourney_name">Tên Giải Đấu</label>
         <input type="text" id="tourney_name" name="name" class="form-control" placeholder="VD: Giải Vô Địch Mùa Xuân 2026" required>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
         <div class="form-group">
-          <label class="form-label">Giờ bắt đầu FFA</label>
+          <label class="form-label" for="tourney_start">Giờ bắt đầu FFA</label>
           <input type="time" id="tourney_start" name="ffa_start_time" class="form-control" value="19:00" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Giờ kết thúc FFA</label>
+          <label class="form-label" for="tourney_end">Giờ kết thúc FFA</label>
           <input type="time" id="tourney_end" name="ffa_end_time" class="form-control" value="21:00" required>
         </div>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
         <div class="form-group">
-          <label class="form-label">Số ngày FFA</label>
+          <label class="form-label" for="tourney_days">Số ngày FFA</label>
           <input type="number" min="1" max="30" id="tourney_days" name="ffa_day_count" class="form-control" value="7" required>
         </div>
         <div class="form-group">
-          <label class="form-label">Top Playoff (N)</label>
+          <label class="form-label" for="tourney_top_n">Top Playoff (N)</label>
           <input type="number" min="2" max="64" id="tourney_top_n" name="bracket_top_n" class="form-control" value="8" required>
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label" for="tourney_multiplier">Hệ số Elo</label>
+        <input id="tourney_multiplier" name="elo_multiplier" type="number" min="1" max="3" step="0.1" value="1.0" class="form-control" required>
+      </div>
+      <p id="create-tournament-feedback" role="status" aria-live="polite"></p>
       <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px;">
         Khởi Tạo Giải Đấu
       </button>
@@ -124,12 +129,12 @@ async function handleCreateTournament(e) {
   const form = e.target;
   const payload = {
     game_id: parseInt(form.game_id.value, 10),
-    name: form.name.value.trim(),
+    name: form.elements.namedItem('name').value.trim(),
     ffa_start_time: form.ffa_start_time.value,
     ffa_end_time: form.ffa_end_time.value,
     ffa_day_count: parseInt(form.ffa_day_count.value, 10),
     bracket_top_n: parseInt(form.bracket_top_n.value, 10),
-    elo_multiplier: 1.0,
+    elo_multiplier: Number(form.elo_multiplier.value),
     enrollment_open: true
   };
 

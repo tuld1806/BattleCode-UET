@@ -59,7 +59,7 @@
                 </td>
                 <td style="text-align: right;">
                   <a href="/games/{{ g.slug }}" class="btn btn-sm">Xem chi tiết</a>
-                  <button class="btn btn-sm" onclick="toggleGameActive({{ g.id }}, {{ 'false' if g.is_active else 'true' }})">
+                  <button class="btn btn-sm" data-slug="{{ g.slug }}" onclick="toggleGameActive(this)">
                     {{ 'Ẩn' if g.is_active else 'Hiện' }}
                   </button>
                 </td>
@@ -77,12 +77,12 @@
 </div>
 
 <script>
-async function toggleGameActive(gameId, targetState) {
+async function toggleGameActive(button) {
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
   try {
-    const res = await fetch(`/api/admin/games/${gameId}/toggle-active`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_active: targetState })
+    const res = await fetch(`/api/admin/games/${encodeURIComponent(button.dataset.slug)}/toggle`, {
+      method: 'POST'
     });
     if (res.ok) {
       window.location.reload();
@@ -92,6 +92,9 @@ async function toggleGameActive(gameId, targetState) {
     }
   } catch (err) {
     alert(`Lỗi kết nối: ${err.message}`);
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
   }
 }
 </script>

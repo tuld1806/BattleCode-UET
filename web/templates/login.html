@@ -56,7 +56,9 @@
         return;
       }
 
-      window.location.href = '/profile';
+      const next = new URLSearchParams(window.location.search).get('next');
+      window.location.href = next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\')
+        ? next : (data.user.is_admin ? '/admin/dashboard' : '/profile');
     } catch (err) {
       errorEl.textContent = `Lỗi mạng: ${err.message}`;
       errorEl.style.display = 'block';

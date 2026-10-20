@@ -5,12 +5,12 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from engine.sandbox import validate_bot_source
 from server.database import get_db
-from server.models import Bot, User
+from server.models import Bot, Game, GameProfile, User
 from server.routes.auth import get_current_user
 
 router = APIRouter(prefix="/bots", tags=["bots"])
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/bots", tags=["bots"])
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_bot(
     file: UploadFile = File(...),
+    game_id: int = Form(1),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -28,6 +29,10 @@ async def upload_bot(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin accounts cannot upload player bots.",
         )
+
+    game = db.get(Game, game_id)
+    if not game or not game.is_active:
+        raise HTTPException(status_code=400, detail="Hãy chọn một trò chơi đang hoạt động.")
 
     raw_filename = file.filename or "bot.py"
     if not raw_filename.endswith(".py"):
@@ -71,17 +76,21 @@ async def upload_bot(
     # Deactivate existing active bots for this user
     db.query(Bot).filter(
         Bot.user_id == current_user.id,
+        Bot.game_id == game_id,
         Bot.is_active == True,  # noqa: E712
     ).update({"is_active": False})
 
     # Create new active Bot record
     new_bot = Bot(
         user_id=current_user.id,
+        game_id=game_id,
         filename=raw_filename,
         filepath=str(target_path),
         is_active=True,
     )
     db.add(new_bot)
+    if not db.query(GameProfile).filter_by(user_id=current_user.id, game_id=game_id).first():
+        db.add(GameProfile(user_id=current_user.id, game_id=game_id))
     db.commit()
     db.refresh(new_bot)
 
@@ -161,7 +170,7 @@ def activate_bot(
         )
 
     db.query(Bot).filter(
-        Bot.user_id == current_user.id
+        Bot.user_id == current_user.id, Bot.game_id == bot.game_id
     ).update({"is_active": False})
 
     bot.is_active = True

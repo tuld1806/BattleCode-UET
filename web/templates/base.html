@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +8,7 @@
   {% block extra_head %}{% endblock %}
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Đến nội dung chính</a>
   <nav class="navbar">
     <a href="/" class="nav-brand">
       <span>⚔️ Battlecode 9x9</span>
@@ -20,7 +21,7 @@
       <li><a href="/bracket" class="{% if request.url.path == '/bracket' %}active{% endif %}">Bracket</a></li>
       <li><a href="/profile" class="{% if request.url.path == '/profile' %}active{% endif %}">Profile</a></li>
       {% if current_user and current_user.is_admin %}
-        <li><a href="/admin" class="{% if request.url.path.startswith('/admin') %}active{% endif %}">Admin</a></li>
+        <li><a href="/admin/dashboard" class="{% if request.url.path.startswith('/admin') %}active{% endif %}">Admin</a></li>
       {% endif %}
     </ul>
 
@@ -42,7 +43,14 @@
     </div>
   </nav>
 
-  <main class="container">
+  {% if current_user and current_user.is_admin %}
+  <nav class="admin-subnav" aria-label="Quản trị hệ thống">
+    {% for path, label in [('/admin/dashboard', 'Tổng quan'), ('/admin/games', 'Trò chơi'), ('/admin/tournaments', 'Giải đấu'), ('/admin/users', 'Người dùng'), ('/admin', 'Cổng FFA & Boss')] %}
+    <a href="{{ path }}" {% if request.url.path == path %}aria-current="page"{% endif %}>{{ label }}</a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+  <main class="container" id="main-content" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
 

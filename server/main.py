@@ -8,6 +8,7 @@ tournament administration, and serves static files and Jinja2 web UI templates.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
 from pathlib import Path
 from typing import Any, AsyncGenerator, Dict, List
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, status
@@ -328,6 +329,7 @@ def profile_page(
             "user_bots": user_bots,
             "user_matches": user_matches,
             "game_profiles": game_profiles,
+            "available_games": db.query(Game).filter(Game.is_active == True).all(),
         },
     )
 
@@ -435,6 +437,33 @@ def user_game_profile_page(
             "win_rate": win_rate,
         },
     )
+
+
+@app.get("/replay/bracket_{bracket_id}_game_{game_number}", response_class=HTMLResponse, tags=["web"])
+def bracket_replay_page(bracket_id: int, game_number: int, request: Request, db: Session = Depends(get_db)) -> HTMLResponse:
+    """Reuse the visualizer for saved BO3 games with a constrained replay identifier."""
+    read_bracket_replay(bracket_id, game_number, db)
+    return templates.TemplateResponse(request=request, name="replay.html", context={
+        "match_id": f"bracket_{bracket_id}_game_{game_number}",
+        "replay_url": f"/api/bracket-replays/{bracket_id}/{game_number}",
+        "current_user": _get_optional_user(request, db),
+    })
+
+
+@app.get("/api/bracket-replays/{bracket_id}/{game_number}", tags=["matches"])
+def read_bracket_replay(bracket_id: int, game_number: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """Read only known bracket game artifacts, including walkover/missing-file handling."""
+    bracket = db.get(BracketMatch, bracket_id)
+    path = BASE_DIR / "replays" / f"bracket_{bracket_id}_game_{game_number}.json"
+    if not bracket or game_number not in (1, 2, 3) or not path.is_file():
+        raise HTTPException(status_code=404, detail="Replay BO3 chưa có; trận có thể chưa đấu hoặc được xử thắng tự động.")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    for key, user in [("player1", bracket.player1), ("player2", bracket.player2)]:
+        if user:
+            # Game two swaps the red/blue seats.
+            seat = ("player2" if key == "player1" else "player1") if game_number == 2 else key
+            data[seat] = {"id": user.id, "username": user.username}
+    return data
 
 
 @app.get("/replay/{match_id}", response_class=HTMLResponse, tags=["web"])

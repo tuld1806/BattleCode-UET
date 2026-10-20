@@ -33,12 +33,16 @@
         </div>
       </div>
 
-      {% if tournament.enrollment_open and current_user and not current_user.is_admin %}
+      {% set membership = namespace(enrolled=false) %}
+      {% for item in enrollments %}{% if current_user and item.user_id == current_user.id %}{% set membership.enrolled = true %}{% endif %}{% endfor %}
+      {% if tournament.status == 'open' and tournament.enrollment_open and current_user and not current_user.is_admin %}
         <div class="enroll-action">
-          <button class="btn btn-primary" onclick="enrollTournament('{{ game.slug }}', {{ tournament.id }})">
-            ✍️ Ghi Danh Ngay
+          <button class="btn {% if not membership.enrolled %}btn-primary{% endif %}" data-action="{{ 'unenroll' if membership.enrolled else 'enroll' }}" onclick="updateEnrollment(this)">
+            {{ 'Hủy ghi danh' if membership.enrolled else 'Ghi danh ngay' }}
           </button>
         </div>
+      {% elif not current_user %}
+        <a class="btn btn-primary" href="/login">Đăng nhập để ghi danh</a>
       {% endif %}
     </div>
 
@@ -67,6 +71,7 @@
       </div>
     </div>
   </header>
+  <p id="enrollment-feedback" role="status" aria-live="polite"></p>
 
   <!-- Tournament Content Sections -->
   <div class="tourney-content-grid">
@@ -314,6 +319,23 @@
 </style>
 
 <script>
+async function updateEnrollment(button) {
+  const feedback = document.getElementById('enrollment-feedback');
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  feedback.textContent = 'Đang cập nhật ghi danh…';
+  try {
+    const response = await fetch('/api/games/{{ game.slug }}/tournaments/{{ tournament.id }}/' + button.dataset.action, {method: 'POST'});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || 'Không thể cập nhật ghi danh. Vui lòng thử lại.');
+    window.location.reload();
+  } catch (error) {
+    feedback.textContent = error.message;
+  } finally {
+    button.disabled = false;
+    button.removeAttribute('aria-busy');
+  }
+}
 async function enrollTournament(gameSlug, tourneyId) {
   try {
     const res = await fetch(`/api/games/${gameSlug}/tournaments/${tourneyId}/enroll`, {

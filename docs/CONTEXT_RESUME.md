@@ -414,3 +414,12 @@ ps_chess_9x9 (game_id=1).
    - **Kế hoạch triển khai hoàn thiện**: [`docs/superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md`](superpowers/plans/2026-10-19-multi-game-track-b-and-c-completion.md).
 
 
+
+## UI completion — 2026-10-20
+
+- Admin navigation links all management pages; game visibility uses `POST /api/admin/games/{slug}/toggle`.
+- Tournament detail provides enrollment cancellation, enrollment feedback, and administrator controls for `open -> running` and ending a tournament. Admin detail lists enrolled players and disables playoff execution before the bracket phase.
+- Bot submission accepts multipart `game_id` (default 1 for compatibility), validates an active game, creates the per-game profile, and activates/deactivates bots only within that game. Profile UI includes the game selector.
+- BO3 replay pages use `/replay/bracket_{bracket_id}_game_{game_number}` and the constrained JSON endpoint `/api/bracket-replays/{bracket_id}/{game_number}`. Missing replay artifacts return 404, including walkovers without saved games. Game two displays swapped seats.
+- Game detail includes RPS rules and game-scoped Elo history. Shared styles support responsive administration grids, keyboard focus and reduced motion.
+- Remaining backend integration limitation: FFA challenges still use the legacy game selection, and bracket records are global rather than tournament-scoped. These are not resolved by the UI completion.

@@ -242,3 +242,12 @@
 
 ---
 
+
+## UI completion — 2026-10-20
+
+- [x] Fix game visibility API and plugin upload success feedback.
+- [x] Add admin navigation, tournament lifecycle controls, participant list and enrollment cancellation.
+- [x] Add game selection to bot submission with per-game activation and profile creation.
+- [x] Connect BO3 replay pages and game rating history; improve small-screen layout and keyboard focus.
+- [x] Verify upload isolation and BO3 replay routes with regression tests.
+- Local review: branch v2; run `.venv/Scripts/python.exe main.py --host 127.0.0.1 --port 8000`.

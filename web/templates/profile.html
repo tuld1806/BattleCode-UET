@@ -86,7 +86,7 @@
 </div>
 {% endif %}
 
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+<div class="management-grid">
   <!-- Bot Upload Box -->
   <div class="card">
     <div class="card-header">
@@ -94,6 +94,14 @@
     </div>
 
     <form id="uploadBotForm" onsubmit="handleBotUpload(event)">
+      <div class="form-group">
+        <label for="botGame">Bộ môn cho bot</label>
+        <select id="botGame" name="game_id" class="form-control" required>
+          {% for game in available_games | default([]) %}
+          <option value="{{ game.id }}">{{ game.display_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
       <div class="drop-zone" id="dropZone" onclick="document.getElementById('botFileInput').click()">
         <div class="drop-icon">📤</div>
         <div class="drop-text">Kéo thả file bot .py vào đây hoặc nhấp để chọn</div>
@@ -313,6 +321,7 @@
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    formData.append('game_id', document.getElementById('botGame').value);
 
     try {
       const res = await fetch('/api/bots/upload', {
